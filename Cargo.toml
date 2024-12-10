@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["clients/cli", "program"]
+
+[workspace.metadata.cli]
+solana = "2.1.0"
+
+# Specify Rust toolchains for rustfmt, clippy, and build.
+# Any unprovided toolchains default to stable.
+[workspace.metadata.toolchains]
+format = "nightly-2024-08-08"
+lint = "nightly-2024-08-08"
+
+[workspace.metadata.spellcheck]
+config = "scripts/spellcheck.toml"
+
+[workspace.lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(target_os, values("solana"))',
+    'cfg(feature, values("frozen-abi", "no-entrypoint"))',
+]

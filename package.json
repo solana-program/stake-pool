@@ -1,0 +1,34 @@
+{
+  "private": true,
+  "scripts": {
+    "programs:build": "zx ./scripts/program/build.mjs",
+    "programs:test": "zx ./scripts/program/test.mjs",
+    "programs:format": "zx ./scripts/program/format.mjs",
+    "programs:lint": "zx ./scripts/program/lint.mjs",
+    "solana:check": "zx ./scripts/check-solana-version.mjs",
+    "solana:link": "zx ./scripts/link-solana-version.mjs",
+    "clients:js:format": "zx ./scripts/client/format-js.mjs",
+    "clients:js:lint": "zx ./scripts/client/lint-js.mjs",
+    "clients:js:publish": "zx ./scripts/client/publish-js.mjs",
+    "clients:js:test": "zx ./scripts/client/test-js.mjs",
+    "clients:py:test": "zx ./scripts/client/test-py.mjs",
+    "clients:cli:format": "zx ./scripts/client/format-cli.mjs",
+    "clients:cli:lint": "zx ./scripts/client/lint-cli.mjs",
+    "clients:cli:publish": "zx ./scripts/client/publish-cli.mjs",
+    "clients:cli:test": "zx ./scripts/client/test-cli.mjs",
+    "template:upgrade": "zx ./scripts/upgrade-template.mjs",
+    "rust:spellcheck": "cargo spellcheck --code 1",
+    "rust:audit": "zx ./scripts/audit-rust.mjs",
+    "rust:semver": "cargo semver-checks"
+  },
+  "devDependencies": {
+    "@iarna/toml": "^2.2.5",
+    "codama": "^1.1.0",
+    "typescript": "^5.7.2",
+    "zx": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=v20.0.0"
+  },
+  "packageManager": "pnpm@9.1.0"
+}
