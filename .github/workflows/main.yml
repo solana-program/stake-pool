@@ -164,6 +164,7 @@ jobs:
           cargo-cache-key: cargo-program-tests
           cargo-cache-fallback-key: cargo-programs
           solana: true
+          purge: true
 
       - name: Test Programs
         run: pnpm programs:test
