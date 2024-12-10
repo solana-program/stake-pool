@@ -52,6 +52,7 @@ jobs:
         with:
           clippy: true
           rustfmt: true
+          cli: true
 
       - name: Format
         run: pnpm clients:cli:format
@@ -182,8 +183,8 @@ jobs:
       - name: Test Client JS
         run: pnpm clients:js:test
 
-  test_client_rust:
-    name: Test Client Rust
+  test_client_cli:
+    name: Test Client CLI
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -194,6 +195,7 @@ jobs:
         with:
           cargo-cache-key: cargo-cli
           solana: true
+          cli: true
 
       - name: Test
         run: pnpm clients:cli:test

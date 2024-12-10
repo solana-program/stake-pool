@@ -19,6 +19,9 @@ inputs:
   solana:
     description: Install Solana if `true`. Defaults to `false`.
     required: false
+  cli:
+    description: Install CLI dependencies if `true`. Defaults to `false`.
+    required: false
 
 runs:
   using: 'composite'
@@ -60,6 +63,11 @@ runs:
       with:
         version: ${{ env.SOLANA_VERSION }}
         cache: true
+
+    - name: Install CLI dependencies
+      if: ${{ inputs.cli == 'true' }}
+      shell: bash
+      run: sudo apt install libudev-dev -y
 
     - name: Cache Cargo Dependencies
       if: ${{ inputs.cargo-cache-key && !inputs.cargo-cache-fallback-key }}
