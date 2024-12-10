@@ -5,7 +5,7 @@ module.exports = {
     node: true,
     jest: true,
   },
-  extends: ['plugin:@typescript-eslint/recommended', 'plugin:prettier/recommended'],
+  extends: ['plugin:@typescript-eslint/recommended'],
   plugins: ['@typescript-eslint/eslint-plugin'],
   parser: '@typescript-eslint/parser',
   parserOptions: {

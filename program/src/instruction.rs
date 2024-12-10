@@ -50,13 +50,13 @@ pub enum FundingType {
     SolWithdraw,
 }
 
-/// Instructions supported by the StakePool program.
+/// Instructions supported by the `StakePool` program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StakePoolInstruction {
-    ///   Initializes a new StakePool.
+    ///   Initializes a new `StakePool`.
     ///
-    ///   0. `[w]` New StakePool to create.
+    ///   0. `[w]` New `StakePool` to create.
     ///   1. `[s]` Manager
     ///   2. `[]` Staker
     ///   3. `[]` Stake pool withdraw authority
@@ -78,7 +78,7 @@ pub enum StakePoolInstruction {
         withdrawal_fee: Fee,
         /// Fee charged per deposit as percentage of deposit
         deposit_fee: Fee,
-        /// Percentage [0-100] of deposit_fee that goes to referrer
+        /// Percentage [0-100] of `deposit_fee` that goes to referrer
         referral_fee: u8,
         /// Maximum expected number of validators
         max_validators: u32,
@@ -108,8 +108,8 @@ pub enum StakePoolInstruction {
     ///  11. `[]` System program
     ///  12. `[]` Stake program
     ///
-    ///  userdata: optional non-zero u32 seed used for generating the validator
-    ///  stake address
+    ///  User data: optional non-zero `u32` seed used for generating the
+    ///  validator stake address
     AddValidatorToPool(u32),
 
     ///   (Staker only) Removes validator from the pool, deactivating its stake
@@ -193,7 +193,7 @@ pub enum StakePoolInstruction {
     /// 12. `[]` System program
     /// 13. `[]` Stake program
     ///
-    /// userdata: amount of lamports to increase on the given validator.
+    /// User data: amount of lamports to increase on the given validator.
     ///
     /// The actual amount split into the transient stake account is:
     /// `lamports + stake_rent_exemption`.
@@ -244,7 +244,7 @@ pub enum StakePoolInstruction {
     ///  4. `[]` Sysvar clock
     ///  5. `[]` Sysvar stake history
     ///  6. `[]` Stake program
-    ///  7. ..7+2N ` [] N pairs of validator and transient stake accounts
+    ///  7. `..7+2N` [] N pairs of validator and transient stake accounts
     UpdateValidatorListBalance {
         /// Index to start updating on the validator list
         start_index: u32,
@@ -302,7 +302,7 @@ pub enum StakePoolInstruction {
     ///
     ///   Succeeds if the stake account has enough SOL to cover the desired
     ///   amount of pool tokens, and if the withdrawal keeps the total
-    ///   staked amount above the minimum of rent-exempt amount + `max(
+    ///   staked amount above the minimum of rent-exempt amount plus `max(
     ///     crate::MINIMUM_ACTIVE_STAKE,
     ///     solana_program::stake::tools::get_minimum_delegation()
     ///   )`.
@@ -333,12 +333,12 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Pool token program id
     ///  12. `[]` Stake program id,
     ///
-    ///  userdata: amount of pool tokens to withdraw
+    ///  User data: amount of pool tokens to withdraw
     WithdrawStake(u64),
 
     ///  (Manager only) Update manager
     ///
-    ///  0. `[w]` StakePool
+    ///  0. `[w]` Stake pool
     ///  1. `[s]` Manager
     ///  2. `[s]` New manager
     ///  3. `[]` New manager fee account
@@ -346,7 +346,7 @@ pub enum StakePoolInstruction {
 
     ///  (Manager only) Update fee
     ///
-    ///  0. `[w]` StakePool
+    ///  0. `[w]` Stake pool
     ///  1. `[s]` Manager
     SetFee {
         /// Type of fee to update and value to update it to
@@ -355,7 +355,7 @@ pub enum StakePoolInstruction {
 
     ///  (Manager or staker only) Update staker
     ///
-    ///  0. `[w]` StakePool
+    ///  0. `[w]` Stake pool
     ///  1. `[s]` Manager or current staker
     ///  2. '[]` New staker pubkey
     SetStaker,
@@ -380,7 +380,7 @@ pub enum StakePoolInstruction {
     ///  (Manager only) Update SOL deposit, stake deposit, or SOL withdrawal
     /// authority.
     ///
-    ///  0. `[w]` StakePool
+    ///  0. `[w]` Stake pool
     ///  1. `[s]` Manager
     ///  2. '[]` New authority pubkey or none
     SetFundingAuthority(FundingType),
@@ -417,7 +417,7 @@ pub enum StakePoolInstruction {
     CreateTokenMetadata {
         /// Token name
         name: String,
-        /// Token symbol e.g. stkSOL
+        /// Token symbol e.g. `stkSOL`
         symbol: String,
         /// URI of the uploaded metadata of the spl-token
         uri: String,
@@ -433,7 +433,7 @@ pub enum StakePoolInstruction {
     UpdateTokenMetadata {
         /// Token name
         name: String,
-        /// Token symbol e.g. stkSOL
+        /// Token symbol e.g. `stkSOL`
         symbol: String,
         /// URI of the uploaded metadata of the spl-token
         uri: String,
@@ -468,7 +468,7 @@ pub enum StakePoolInstruction {
     /// 12. `[]` System program
     /// 13. `[]` Stake program
     ///
-    /// userdata: amount of lamports to increase on the given validator.
+    /// User data: amount of lamports to increase on the given validator.
     ///
     /// The actual amount split into the transient stake account is:
     /// `lamports + stake_rent_exemption`.
@@ -663,7 +663,7 @@ pub enum StakePoolInstruction {
     ///
     ///   Succeeds if the stake account has enough SOL to cover the desired
     ///   amount of pool tokens, and if the withdrawal keeps the total
-    ///   staked amount above the minimum of rent-exempt amount + `max(
+    ///   staked amount above the minimum of rent-exempt amount plus `max(
     ///     crate::MINIMUM_ACTIVE_STAKE,
     ///     solana_program::stake::tools::get_minimum_delegation()
     ///   )`.
@@ -682,7 +682,7 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Pool token program id
     ///  12. `[]` Stake program id,
     ///
-    ///  userdata: amount of pool tokens to withdraw
+    ///  User data: amount of pool tokens to withdraw
     WithdrawStakeWithSlippage {
         /// Pool tokens to burn in exchange for lamports
         pool_tokens_in: u64,
@@ -739,7 +739,7 @@ pub enum StakePoolInstruction {
     },
 }
 
-/// Creates an 'initialize' instruction.
+/// Creates an `Initialize` instruction.
 pub fn initialize(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1332,7 +1332,7 @@ pub fn decrease_validator_stake_with_vote(
 }
 
 /// Create a `IncreaseAdditionalValidatorStake` instruction given an existing
-/// stake pool, valiator list and vote account
+/// stake pool, validator list and vote account
 pub fn increase_additional_validator_stake_with_list(
     program_id: &Pubkey,
     stake_pool: &StakePool,
@@ -1360,7 +1360,7 @@ pub fn increase_additional_validator_stake_with_list(
 }
 
 /// Create a `DecreaseAdditionalValidatorStake` instruction given an existing
-/// stake pool, valiator list and vote account
+/// stake pool, validator list and vote account
 pub fn decrease_additional_validator_stake_with_list(
     program_id: &Pubkey,
     stake_pool: &StakePool,
@@ -2247,7 +2247,7 @@ fn withdraw_stake_internal(
     }
 }
 
-/// Creates a 'WithdrawStake' instruction.
+/// Creates a `WithdrawStake` instruction.
 pub fn withdraw_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -2281,7 +2281,7 @@ pub fn withdraw_stake(
     )
 }
 
-/// Creates a 'WithdrawStakeWithSlippage' instruction.
+/// Creates a `WithdrawStakeWithSlippage` instruction.
 pub fn withdraw_stake_with_slippage(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -2501,7 +2501,7 @@ pub fn withdraw_sol_with_authority_and_slippage(
     )
 }
 
-/// Creates a 'set manager' instruction.
+/// Creates a `SetManager` instruction.
 pub fn set_manager(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -2522,7 +2522,7 @@ pub fn set_manager(
     }
 }
 
-/// Creates a 'set fee' instruction.
+/// Creates a `SetFee` instruction.
 pub fn set_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -2540,7 +2540,7 @@ pub fn set_fee(
     }
 }
 
-/// Creates a 'set staker' instruction.
+/// Creates a `SetStaker` instruction.
 pub fn set_staker(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -2559,7 +2559,7 @@ pub fn set_staker(
     }
 }
 
-/// Creates a 'SetFundingAuthority' instruction.
+/// Creates a `SetFundingAuthority` instruction.
 pub fn set_funding_authority(
     program_id: &Pubkey,
     stake_pool: &Pubkey,

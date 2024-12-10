@@ -22,10 +22,10 @@ serde = "1.0.215"
 serde_derive = "1.0.103"
 solana-program = "2.1.0"
 solana-security-txt = "1.1.1"
-spl-pod = { version = "0.5.0", path = "../../libraries/pod", features = [
+spl-pod = { version = "0.5.0", features = [
   "borsh",
 ] }
-spl-token-2022 = { version = "6.0.0", path = "../../token/program-2022", features = [
+spl-token-2022 = { version = "6.0.0", features = [
   "no-entrypoint",
 ] }
 thiserror = "2.0"
@@ -37,7 +37,7 @@ proptest = "1.5"
 solana-program-test = "2.1.0"
 solana-sdk = "2.1.0"
 solana-vote-program = "2.1.0"
-spl-token = { version = "7.0", path = "../../token/program", features = [
+spl-token = { version = "7.0", features = [
   "no-entrypoint",
 ] }
 test-case = "3.3"

@@ -45,7 +45,7 @@ use {
     std::num::NonZeroU32,
 };
 
-/// Deserialize the stake state from AccountInfo
+/// Deserialize the stake state from `AccountInfo`
 fn get_stake_state(
     stake_account_info: &AccountInfo,
 ) -> Result<(stake::state::Meta, stake::state::Stake), ProgramError> {
@@ -203,7 +203,7 @@ fn stake_is_usable_by_pool(
         && meta.lockup == *expected_lockup
 }
 
-/// Checks if a stake account is active, without taking into account cooldowns
+/// Checks if a stake account is active, without taking into account cool down
 fn stake_is_inactive_without_history(stake: &stake::state::Stake, epoch: Epoch) -> bool {
     stake.delegation.deactivation_epoch < epoch
         || (stake.delegation.activation_epoch == epoch
@@ -329,7 +329,7 @@ fn create_stake_account(
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
-    /// Issue a delegate_stake instruction.
+    /// Issue a `delegate_stake` instruction.
     #[allow(clippy::too_many_arguments)]
     fn stake_delegate<'a>(
         stake_info: AccountInfo<'a>,
@@ -365,7 +365,7 @@ impl Processor {
         )
     }
 
-    /// Issue a stake_deactivate instruction.
+    /// Issue a `stake_deactivate` instruction.
     fn stake_deactivate<'a>(
         stake_info: AccountInfo<'a>,
         clock_info: AccountInfo<'a>,
@@ -382,7 +382,7 @@ impl Processor {
         invoke_signed(&ix, &[stake_info, clock_info, authority_info], signers)
     }
 
-    /// Issue a stake_split instruction.
+    /// Issue a `stake_split` instruction.
     fn stake_split<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
@@ -407,7 +407,7 @@ impl Processor {
         )
     }
 
-    /// Issue a stake_merge instruction.
+    /// Issue a `stake_merge` instruction.
     #[allow(clippy::too_many_arguments)]
     fn stake_merge<'a>(
         stake_pool: &Pubkey,
@@ -563,7 +563,7 @@ impl Processor {
         )
     }
 
-    /// Issue a spl_token `Burn` instruction.
+    /// Issue a SPL Token `Burn` instruction.
     #[allow(clippy::too_many_arguments)]
     fn token_burn<'a>(
         token_program: AccountInfo<'a>,
@@ -584,7 +584,7 @@ impl Processor {
         invoke(&ix, &[burn_account, mint, authority])
     }
 
-    /// Issue a spl_token `MintTo` instruction.
+    /// Issue a SPL Token `MintTo` instruction.
     #[allow(clippy::too_many_arguments)]
     fn token_mint_to<'a>(
         stake_pool: &Pubkey,
@@ -611,7 +611,7 @@ impl Processor {
         invoke_signed(&ix, &[mint, destination, authority], signers)
     }
 
-    /// Issue a spl_token `Transfer` instruction.
+    /// Issue a SPL Token `Transfer` instruction.
     #[allow(clippy::too_many_arguments)]
     fn token_transfer<'a>(
         token_program: AccountInfo<'a>,
@@ -2288,7 +2288,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [DepositStake](enum.Instruction.html).
+    /// Processes [`DepositStake`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_deposit_stake(
         program_id: &Pubkey,
@@ -2553,7 +2553,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [DepositSol](enum.Instruction.html).
+    /// Processes [`DepositSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_deposit_sol(
         program_id: &Pubkey,
@@ -2701,7 +2701,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [WithdrawStake](enum.Instruction.html).
+    /// Processes [`WithdrawStake`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_stake(
         program_id: &Pubkey,
@@ -3016,7 +3016,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [WithdrawSol](enum.Instruction.html).
+    /// Processes [`WithdrawSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_sol(
         program_id: &Pubkey,
@@ -3318,7 +3318,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetManager](enum.Instruction.html).
+    /// Processes [`SetManager`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_set_manager(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -3348,7 +3348,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetFee](enum.Instruction.html).
+    /// Processes [`SetFee`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_set_fee(
         program_id: &Pubkey,
@@ -3377,7 +3377,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetStaker](enum.Instruction.html).
+    /// Processes [`SetStaker`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_set_staker(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -3401,7 +3401,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetFundingAuthority](enum.Instruction.html).
+    /// Processes [`SetFundingAuthority`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_set_funding_authority(
         program_id: &Pubkey,
@@ -3435,7 +3435,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [Instruction](enum.Instruction.html).
+    /// Processes [`Instruction`](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::try_from_slice(input)?;
         match instruction {

@@ -1,4 +1,4 @@
-//! Big vector type, used with vectors that can't be serde'd
+//! Big vector type, used with vectors that can't be deserialized on-chain
 #![allow(clippy::arithmetic_side_effects)] // checked math involves too many compute units
 
 use {
@@ -25,7 +25,7 @@ impl<'data> BigVec<'data> {
         u32::from_le_bytes(*vec_len)
     }
 
-    /// Find out if the vector has no contents (as demanded by clippy)
+    /// Find out if the vector has no contents
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

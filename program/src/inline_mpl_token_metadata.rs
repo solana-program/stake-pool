@@ -1,4 +1,4 @@
-//! Inlined MPL metadata types to avoid a direct dependency on
+//! Inline MPL metadata types to avoid a direct dependency on
 //! `mpl-token-metadata' NOTE: this file is sym-linked in `spl-single-pool`, so
 //! be careful with changes!
 
@@ -16,9 +16,9 @@ pub(crate) mod instruction {
 
     #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug, Clone)]
     struct CreateMetadataAccountArgsV3 {
-        /// Note that unique metadatas are disabled for now.
+        /// Note that unique metadata is disabled for now.
         pub data: DataV2,
-        /// Whether you want your metadata to be updateable in the future.
+        /// Whether you want your metadata to be changeable in the future.
         pub is_mutable: bool,
         /// UNUSED If this is a collection parent NFT.
         pub collection_details: Option<u8>,

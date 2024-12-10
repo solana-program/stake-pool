@@ -6,7 +6,7 @@ use {
     thiserror::Error,
 };
 
-/// Errors that may be returned by the StakePool program.
+/// Errors that may be returned by the Stake Pool program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum StakePoolError {
     // 0.
@@ -23,7 +23,7 @@ pub enum StakePoolError {
     /// The calculation failed.
     #[error("CalculationFailure")]
     CalculationFailure,
-    /// Stake pool fee > 1.
+    /// Stake pool fee greater than 1.
     #[error("FeeTooHigh")]
     FeeTooHigh,
 

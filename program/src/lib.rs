@@ -46,7 +46,7 @@ pub const MAX_VALIDATORS_TO_UPDATE: usize = 5;
 
 /// Maximum factor by which a withdrawal fee can be increased per epoch
 /// protecting stakers from malicious users.
-/// If current fee is 0, WITHDRAWAL_BASELINE_FEE is used as the baseline
+/// If current fee is 0, `WITHDRAWAL_BASELINE_FEE` is used as the baseline
 pub const MAX_WITHDRAWAL_FEE_INCREASE: Fee = Fee {
     numerator: 3,
     denominator: 2,

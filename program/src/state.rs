@@ -43,7 +43,7 @@ pub enum AccountType {
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct StakePool {
-    /// Account type, must be StakePool currently
+    /// Account type, must be `StakePool` currently
     pub account_type: AccountType,
 
     /// Manager authority, allows for updating the staker, manager, and fee
@@ -467,17 +467,17 @@ impl StakePool {
         }
     }
 
-    /// Check if StakePool is actually initialized as a stake pool
+    /// Check if `StakePool` is actually initialized as a stake pool
     pub fn is_valid(&self) -> bool {
         self.account_type == AccountType::StakePool
     }
 
-    /// Check if StakePool is currently uninitialized
+    /// Check if `StakePool` is currently uninitialized
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
     }
 
-    /// Updates one of the StakePool's fees.
+    /// Updates one of the `StakePool`'s fees.
     pub fn update_fee(&mut self, fee: &FeeType) -> Result<(), StakePoolError> {
         match fee {
             FeeType::SolReferral(new_fee) => self.sol_referral_fee = *new_fee,
@@ -545,18 +545,18 @@ pub fn is_extension_supported_for_fee_account(extension_type: &ExtensionType) ->
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorList {
     /// Data outside of the validator list, separated out for cheaper
-    /// deserializations
+    /// deserialization
     pub header: ValidatorListHeader,
 
     /// List of stake info for each validator in the pool
     pub validators: Vec<ValidatorStakeInfo>,
 }
 
-/// Helper type to deserialize just the start of a ValidatorList
+/// Helper type to deserialize just the start of a `ValidatorList`
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorListHeader {
-    /// Account type, must be ValidatorList currently
+    /// Account type, must be `ValidatorList` currently
     pub account_type: AccountType,
 
     /// Maximum allowable number of validators
@@ -657,7 +657,7 @@ impl From<StakeStatus> for PodStakeStatus {
     }
 }
 
-/// Withdrawal type, figured out during process_withdraw_stake
+/// Withdrawal type, figured out during `process_withdraw_stake`
 #[derive(Debug, PartialEq)]
 pub(crate) enum StakeWithdrawSource {
     /// Some of an active stake account, but not all
@@ -674,7 +674,7 @@ pub(crate) enum StakeWithdrawSource {
 /// THERE'S AN EXTREMELY GOOD REASON.
 ///
 /// To save on BPF instructions, the serialized bytes are reinterpreted with a
-/// bytemuck transmute, which means that this structure cannot have any
+/// `bytemuck` transmute, which means that this structure cannot have any
 /// undeclared alignment-padding in its representation.
 #[repr(C)]
 #[derive(
@@ -839,8 +839,8 @@ impl ValidatorListHeader {
         self.account_type == AccountType::Uninitialized
     }
 
-    /// Extracts a slice of ValidatorStakeInfo types from the vec part
-    /// of the ValidatorList
+    /// Extracts a slice of `ValidatorStakeInfo` types from the vec part
+    /// of the `ValidatorList`
     pub fn deserialize_mut_slice<'a>(
         big_vec: &'a mut BigVec,
         skip: usize,
@@ -849,7 +849,7 @@ impl ValidatorListHeader {
         big_vec.deserialize_mut_slice::<ValidatorStakeInfo>(skip, len)
     }
 
-    /// Extracts the validator list into its header and internal BigVec
+    /// Extracts the validator list into its header and internal `BigVec`
     pub fn deserialize_vec(data: &mut [u8]) -> Result<(Self, BigVec), ProgramError> {
         let mut data_mut = data.borrow();
         let header = ValidatorListHeader::deserialize(&mut data_mut)?;
@@ -950,9 +950,8 @@ impl Fee {
             .checked_div(denominator)
     }
 
-    /// Withdrawal fees have some additional restrictions,
-    /// this fn checks if those are met, returning an error if not.
-    /// Does nothing and returns Ok if fee type is not withdrawal
+    /// Withdrawal fees have some additional restrictions, this function checks
+    /// if those are met, returning an error if not.
     pub fn check_withdrawal(&self, old_withdrawal_fee: &Fee) -> Result<(), StakePoolError> {
         // If the previous withdrawal fee was 0, we allow the fee to be set to a
         // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
