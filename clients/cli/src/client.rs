@@ -5,7 +5,7 @@ use {
         client_error::ClientError,
         rpc_client::RpcClient,
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-        rpc_filter::{Memcmp, RpcFilterType},
+        rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
     },
     solana_program::{
         borsh1::try_from_slice_unchecked, hash::Hash, instruction::Instruction, message::Message,
@@ -90,9 +90,9 @@ pub(crate) fn get_stake_pools(
             &spl_stake_pool::id(),
             RpcProgramAccountsConfig {
                 // 0 is the account type
-                filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_raw_bytes(
+                filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new(
                     0,
-                    vec![1],
+                    MemcmpEncodedBytes::Base58("2".to_string()),
                 ))]),
                 account_config: RpcAccountInfoConfig {
                     encoding: Some(UiAccountEncoding::Base64),
