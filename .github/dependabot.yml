@@ -13,7 +13,16 @@ updates:
     timezone: UTC
   open-pull-requests-limit: 6
 - package-ecosystem: npm
-  directory: "/"
+  directories:
+    - "/"
+    - "/clients/js-legacy"
+  schedule:
+    interval: daily
+    time: "09:00"
+    timezone: UTC
+  open-pull-requests-limit: 6
+- package-ecosystem: pip
+  directory: "/clients/py"
   schedule:
     interval: daily
     time: "09:00"
