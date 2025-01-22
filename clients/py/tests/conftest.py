@@ -11,6 +11,7 @@ from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
+from solana.exceptions import SolanaRpcException
 
 from spl.token.instructions import get_associated_token_address
 
@@ -77,7 +78,12 @@ async def async_client(solana_test_validator) -> AsyncIterator[AsyncClient]:
     async_client = AsyncClient(commitment=Confirmed)
     total_attempts = 20
     current_attempt = 0
-    while not await async_client.is_connected():
+    while True:
+        try:
+            if await async_client.is_connected():
+                break
+        except SolanaRpcException:
+            pass
         if current_attempt == total_attempts:
             raise Exception("Could not connect to test validator")
         else:
