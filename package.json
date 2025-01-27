@@ -1,10 +1,10 @@
 {
   "private": true,
   "scripts": {
-    "programs:build": "zx ./scripts/program/build.mjs",
-    "programs:test": "zx ./scripts/program/test.mjs",
-    "programs:format": "zx ./scripts/program/format.mjs",
-    "programs:lint": "zx ./scripts/program/lint.mjs",
+    "programs:build": "zx ./scripts/rust/build-sbf.mjs program",
+    "programs:test": "zx ./scripts/rust/test-sbf.mjs program",
+    "programs:format": "zx ./scripts/rust/format.mjs program",
+    "programs:lint": "zx ./scripts/rust/lint.mjs program",
     "solana:check": "zx ./scripts/check-solana-version.mjs",
     "solana:link": "zx ./scripts/link-solana-version.mjs",
     "clients:js:format": "zx ./scripts/client/format-js.mjs",
@@ -12,13 +12,12 @@
     "clients:js:publish": "zx ./scripts/client/publish-js.mjs",
     "clients:js:test": "zx ./scripts/client/test-js.mjs",
     "clients:py:test": "zx ./scripts/client/test-py.mjs",
-    "clients:cli:format": "zx ./scripts/client/format-cli.mjs",
-    "clients:cli:lint": "zx ./scripts/client/lint-cli.mjs",
-    "clients:cli:publish": "zx ./scripts/client/publish-cli.mjs",
-    "clients:cli:test": "zx ./scripts/client/test-cli.mjs",
+    "clients:cli:format": "zx ./scripts/rust/format.mjs clients/cli",
+    "clients:cli:lint": "zx ./scripts/rust/lint.mjs clients/cli",
+    "clients:cli:test": "zx ./scripts/rust/test.mjs clients/cli",
     "template:upgrade": "zx ./scripts/upgrade-template.mjs",
     "rust:spellcheck": "cargo spellcheck --code 1",
-    "rust:audit": "zx ./scripts/audit-rust.mjs",
+    "rust:audit": "zx ./scripts/rust/audit.mjs",
     "rust:semver": "cargo semver-checks"
   },
   "devDependencies": {

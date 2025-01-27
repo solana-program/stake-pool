@@ -7,20 +7,24 @@ import {
   workingDirectory,
 } from '../utils.mjs';
 
-// Configure additional arguments here, e.g.:
-// ['--arg1', '--arg2', ...cliArguments()]
-const lintArgs = cliArguments();
+const [folder, ...args] = cliArguments();
+
+// Configure arguments here.
+const lintArgs = [
+  '-Zunstable-options',
+  '--all-targets',
+  '--all-features',
+  '--',
+  '--deny=warnings',
+  '--deny=clippy::arithmetic_side_effects',
+  ...args,
+];
 
 const fix = popArgument(lintArgs, '--fix');
 const toolchain = getToolchainArgument('lint');
-const manifestPath = path.join(
-  workingDirectory,
-  'clients',
-  'cli',
-  'Cargo.toml'
-);
 
-// Check the client using Clippy.
+const manifestPath = path.join(workingDirectory, folder, 'Cargo.toml');
+
 if (fix) {
   await $`cargo ${toolchain} clippy --manifest-path ${manifestPath} --fix ${lintArgs}`;
 } else {
