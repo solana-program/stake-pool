@@ -176,8 +176,7 @@ async fn success_remove_validator(multiple: u64) {
 
     // round up to force one more pool token if needed
     let pool_tokens_post_fee =
-        (remaining_lamports * stake_pool.pool_token_supply + stake_pool.total_lamports - 1)
-            / stake_pool.total_lamports;
+        (remaining_lamports * stake_pool.pool_token_supply).div_ceil(stake_pool.total_lamports);
     let new_user_authority = Pubkey::new_unique();
     let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(pool_tokens_post_fee);
     let error = stake_pool_accounts

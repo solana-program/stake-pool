@@ -18,7 +18,7 @@ pub struct BigVec<'data> {
 
 const VEC_SIZE_BYTES: usize = 4;
 
-impl<'data> BigVec<'data> {
+impl BigVec<'_> {
     /// Get the length of the vector
     pub fn len(&self) -> u32 {
         let vec_len = array_ref![self.data, 0, VEC_SIZE_BYTES];
