@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@iarna/toml": "^2.2.5",
-    "codama": "^1.2.8",
+    "codama": "^1.2.10",
     "typescript": "^5.8.2",
     "zx": "^8.4.1"
   },
