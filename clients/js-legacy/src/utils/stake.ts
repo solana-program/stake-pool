@@ -10,7 +10,7 @@ import { findStakeProgramAddress, findTransientStakeProgramAddress } from './pro
 import BN from 'bn.js';
 
 import { lamportsToSol } from './math';
-import { WithdrawAccount } from '../index';
+import { getStakePoolProgramId, WithdrawAccount } from '../index';
 import {
   Fee,
   StakePool,
@@ -18,7 +18,7 @@ import {
   ValidatorListLayout,
   ValidatorStakeInfoStatus,
 } from '../layouts';
-import { MINIMUM_ACTIVE_STAKE, STAKE_POOL_PROGRAM_ID } from '../constants';
+import { MINIMUM_ACTIVE_STAKE } from '../constants';
 
 export async function getValidatorListAccount(connection: Connection, pubkey: PublicKey) {
   const account = await connection.getAccountInfo(pubkey);
@@ -52,6 +52,7 @@ export async function prepareWithdrawAccounts(
   compareFn?: (a: ValidatorAccount, b: ValidatorAccount) => number,
   skipFee?: boolean,
 ): Promise<WithdrawAccount[]> {
+  const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint);
   const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList);
   const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList;
 
@@ -78,7 +79,7 @@ export async function prepareWithdrawAccounts(
     }
 
     const stakeAccountAddress = await findStakeProgramAddress(
-      STAKE_POOL_PROGRAM_ID,
+      stakePoolProgramId,
       validator.voteAccountAddress,
       stakePoolAddress,
     );
@@ -98,7 +99,7 @@ export async function prepareWithdrawAccounts(
     const transientStakeLamports = validator.transientStakeLamports.sub(minBalance);
     if (transientStakeLamports.gt(new BN(0))) {
       const transientStakeAccountAddress = await findTransientStakeProgramAddress(
-        STAKE_POOL_PROGRAM_ID,
+        stakePoolProgramId,
         validator.voteAccountAddress,
         stakePoolAddress,
         validator.transientSeedSuffixStart,

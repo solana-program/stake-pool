@@ -17,6 +17,7 @@ import {
   METADATA_MAX_URI_LENGTH,
   METADATA_PROGRAM_ID,
   STAKE_POOL_PROGRAM_ID,
+  DEVNET_STAKE_POOL_PROGRAM_ID,
 } from './constants';
 
 /**
@@ -183,6 +184,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
  * Cleans up validator stake account entries marked as `ReadyForRemoval`
  */
 export type CleanupRemovedValidatorEntriesParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   validatorList: PublicKey;
 };
@@ -191,6 +193,7 @@ export type CleanupRemovedValidatorEntriesParams = {
  * Updates balances of validator and transient stake accounts in the pool.
  */
 export type UpdateValidatorListBalanceParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   withdrawAuthority: PublicKey;
   validatorList: PublicKey;
@@ -204,6 +207,7 @@ export type UpdateValidatorListBalanceParams = {
  * Updates total pool balance based on balances in the reserve and validator list.
  */
 export type UpdateStakePoolBalanceParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   withdrawAuthority: PublicKey;
   validatorList: PublicKey;
@@ -216,6 +220,7 @@ export type UpdateStakePoolBalanceParams = {
  * (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
  */
 export type DecreaseValidatorStakeParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   staker: PublicKey;
   withdrawAuthority: PublicKey;
@@ -242,6 +247,7 @@ export interface DecreaseAdditionalValidatorStakeParams extends DecreaseValidato
  * (Staker only) Increase stake on a validator from the reserve account.
  */
 export type IncreaseValidatorStakeParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   staker: PublicKey;
   withdrawAuthority: PublicKey;
@@ -265,6 +271,7 @@ export interface IncreaseAdditionalValidatorStakeParams extends IncreaseValidato
  * Deposits a stake account into the pool in exchange for pool tokens
  */
 export type DepositStakeParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   validatorList: PublicKey;
   depositAuthority: PublicKey;
@@ -282,6 +289,7 @@ export type DepositStakeParams = {
  * Withdraws a stake account from the pool in exchange for pool tokens
  */
 export type WithdrawStakeParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   validatorList: PublicKey;
   withdrawAuthority: PublicKey;
@@ -299,6 +307,7 @@ export type WithdrawStakeParams = {
  * Withdraw sol instruction params
  */
 export type WithdrawSolParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   sourcePoolAccount: PublicKey;
   withdrawAuthority: PublicKey;
@@ -316,6 +325,7 @@ export type WithdrawSolParams = {
  * representing ownership into the pool. Inputs are converted to the current ratio.
  */
 export type DepositSolParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   depositAuthority?: PublicKey | undefined;
   withdrawAuthority: PublicKey;
@@ -329,6 +339,7 @@ export type DepositSolParams = {
 };
 
 export type CreateTokenMetadataParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   manager: PublicKey;
   tokenMetadata: PublicKey;
@@ -341,6 +352,7 @@ export type CreateTokenMetadataParams = {
 };
 
 export type UpdateTokenMetadataParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   manager: PublicKey;
   tokenMetadata: PublicKey;
@@ -351,6 +363,7 @@ export type UpdateTokenMetadataParams = {
 };
 
 export type AddValidatorToPoolParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   staker: PublicKey;
   reserveStake: PublicKey;
@@ -362,6 +375,7 @@ export type AddValidatorToPoolParams = {
 };
 
 export type RemoveValidatorFromPoolParams = {
+  programId: PublicKey;
   stakePool: PublicKey;
   staker: PublicKey;
   withdrawAuthority: PublicKey;
@@ -379,6 +393,7 @@ export class StakePoolInstruction {
    */
   static addValidatorToPool(params: AddValidatorToPoolParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       staker,
       reserveStake,
@@ -408,7 +423,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -418,8 +433,15 @@ export class StakePoolInstruction {
    * Creates instruction to remove a validator from the stake pool.
    */
   static removeValidatorFromPool(params: RemoveValidatorFromPoolParams): TransactionInstruction {
-    const { stakePool, staker, withdrawAuthority, validatorList, validatorStake, transientStake } =
-      params;
+    const {
+      programId,
+      stakePool,
+      staker,
+      withdrawAuthority,
+      validatorList,
+      validatorStake,
+      transientStake,
+    } = params;
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.RemoveValidatorFromPool;
     const data = encodeData(type);
 
@@ -435,7 +457,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -448,6 +470,7 @@ export class StakePoolInstruction {
     params: UpdateValidatorListBalanceParams,
   ): TransactionInstruction {
     const {
+      programId,
       stakePool,
       withdrawAuthority,
       validatorList,
@@ -476,7 +499,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -487,6 +510,7 @@ export class StakePoolInstruction {
    */
   static updateStakePoolBalance(params: UpdateStakePoolBalanceParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       withdrawAuthority,
       validatorList,
@@ -509,7 +533,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -521,7 +545,7 @@ export class StakePoolInstruction {
   static cleanupRemovedValidatorEntries(
     params: CleanupRemovedValidatorEntriesParams,
   ): TransactionInstruction {
-    const { stakePool, validatorList } = params;
+    const { programId, stakePool, validatorList } = params;
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.CleanupRemovedValidatorEntries;
     const data = encodeData(type);
@@ -532,7 +556,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -544,6 +568,7 @@ export class StakePoolInstruction {
    */
   static increaseValidatorStake(params: IncreaseValidatorStakeParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       staker,
       withdrawAuthority,
@@ -577,7 +602,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -591,6 +616,7 @@ export class StakePoolInstruction {
     params: IncreaseAdditionalValidatorStakeParams,
   ): TransactionInstruction {
     const {
+      programId,
       stakePool,
       staker,
       withdrawAuthority,
@@ -626,7 +652,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -638,6 +664,7 @@ export class StakePoolInstruction {
    */
   static decreaseValidatorStake(params: DecreaseValidatorStakeParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       staker,
       withdrawAuthority,
@@ -665,7 +692,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -679,6 +706,7 @@ export class StakePoolInstruction {
     params: DecreaseValidatorStakeWithReserveParams,
   ): TransactionInstruction {
     const {
+      programId,
       stakePool,
       staker,
       withdrawAuthority,
@@ -708,7 +736,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -722,6 +750,7 @@ export class StakePoolInstruction {
     params: DecreaseAdditionalValidatorStakeParams,
   ): TransactionInstruction {
     const {
+      programId,
       stakePool,
       staker,
       withdrawAuthority,
@@ -754,7 +783,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -765,6 +794,7 @@ export class StakePoolInstruction {
    */
   static depositStake(params: DepositStakeParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       validatorList,
       depositAuthority,
@@ -800,7 +830,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -811,6 +841,7 @@ export class StakePoolInstruction {
    */
   static depositSol(params: DepositSolParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       withdrawAuthority,
       depositAuthority,
@@ -848,7 +879,7 @@ export class StakePoolInstruction {
     }
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -859,6 +890,7 @@ export class StakePoolInstruction {
    */
   static withdrawStake(params: WithdrawStakeParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       validatorList,
       withdrawAuthority,
@@ -892,7 +924,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -903,6 +935,7 @@ export class StakePoolInstruction {
    */
   static withdrawSol(params: WithdrawSolParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       withdrawAuthority,
       sourceTransferAuthority,
@@ -942,7 +975,7 @@ export class StakePoolInstruction {
     }
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -954,6 +987,7 @@ export class StakePoolInstruction {
    */
   static createTokenMetadata(params: CreateTokenMetadataParams): TransactionInstruction {
     const {
+      programId,
       stakePool,
       withdrawAuthority,
       tokenMetadata,
@@ -988,7 +1022,7 @@ export class StakePoolInstruction {
     });
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -999,7 +1033,8 @@ export class StakePoolInstruction {
    * in the mpl token metadata program account for the pool token
    */
   static updateTokenMetadata(params: UpdateTokenMetadataParams): TransactionInstruction {
-    const { stakePool, withdrawAuthority, tokenMetadata, manager, name, symbol, uri } = params;
+    const { programId, stakePool, withdrawAuthority, tokenMetadata, manager, name, symbol, uri } =
+      params;
 
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: false },
@@ -1020,7 +1055,7 @@ export class StakePoolInstruction {
     });
 
     return new TransactionInstruction({
-      programId: STAKE_POOL_PROGRAM_ID,
+      programId,
       keys,
       data,
     });
@@ -1036,6 +1071,7 @@ export class StakePoolInstruction {
     decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositStake, instruction.data);
 
     return {
+      programId: instruction.programId,
       stakePool: instruction.keys[0].pubkey,
       validatorList: instruction.keys[1].pubkey,
       depositAuthority: instruction.keys[2].pubkey,
@@ -1060,6 +1096,7 @@ export class StakePoolInstruction {
     const { amount } = decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol, instruction.data);
 
     return {
+      programId: instruction.programId,
       stakePool: instruction.keys[0].pubkey,
       depositAuthority: instruction.keys[1].pubkey,
       withdrawAuthority: instruction.keys[2].pubkey,
@@ -1077,8 +1114,11 @@ export class StakePoolInstruction {
    * @internal
    */
   private static checkProgramId(programId: PublicKey) {
-    if (!programId.equals(StakeProgram.programId)) {
-      throw new Error('Invalid instruction; programId is not StakeProgram');
+    if (
+      !programId.equals(STAKE_POOL_PROGRAM_ID) &&
+      !programId.equals(DEVNET_STAKE_POOL_PROGRAM_ID)
+    ) {
+      throw new Error('Invalid instruction; programId is not the stake pool program');
     }
   }
 

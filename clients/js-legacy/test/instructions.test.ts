@@ -69,6 +69,7 @@ describe('StakePoolProgram', () => {
 
   it('StakePoolInstruction.addValidatorToPool', () => {
     const payload: AddValidatorToPoolParams = {
+      programId: STAKE_POOL_PROGRAM_ID,
       stakePool: stakePoolAddress,
       staker: Keypair.generate().publicKey,
       reserveStake: Keypair.generate().publicKey,
@@ -103,6 +104,7 @@ describe('StakePoolProgram', () => {
 
   it('StakePoolInstruction.removeValidatorFromPool', () => {
     const payload: RemoveValidatorFromPoolParams = {
+      programId: STAKE_POOL_PROGRAM_ID,
       stakePool: stakePoolAddress,
       staker: Keypair.generate().publicKey,
       withdrawAuthority: Keypair.generate().publicKey,
@@ -132,6 +134,7 @@ describe('StakePoolProgram', () => {
 
   it('StakePoolInstruction.depositSol', () => {
     const payload: DepositSolParams = {
+      programId: STAKE_POOL_PROGRAM_ID,
       stakePool: stakePoolAddress,
       withdrawAuthority: Keypair.generate().publicKey,
       reserveStake: Keypair.generate().publicKey,
