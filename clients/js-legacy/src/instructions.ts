@@ -184,7 +184,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
  * Cleans up validator stake account entries marked as `ReadyForRemoval`
  */
 export type CleanupRemovedValidatorEntriesParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   validatorList: PublicKey;
 };
@@ -193,7 +193,7 @@ export type CleanupRemovedValidatorEntriesParams = {
  * Updates balances of validator and transient stake accounts in the pool.
  */
 export type UpdateValidatorListBalanceParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   withdrawAuthority: PublicKey;
   validatorList: PublicKey;
@@ -207,7 +207,7 @@ export type UpdateValidatorListBalanceParams = {
  * Updates total pool balance based on balances in the reserve and validator list.
  */
 export type UpdateStakePoolBalanceParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   withdrawAuthority: PublicKey;
   validatorList: PublicKey;
@@ -220,7 +220,7 @@ export type UpdateStakePoolBalanceParams = {
  * (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
  */
 export type DecreaseValidatorStakeParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   staker: PublicKey;
   withdrawAuthority: PublicKey;
@@ -247,7 +247,7 @@ export interface DecreaseAdditionalValidatorStakeParams extends DecreaseValidato
  * (Staker only) Increase stake on a validator from the reserve account.
  */
 export type IncreaseValidatorStakeParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   staker: PublicKey;
   withdrawAuthority: PublicKey;
@@ -271,7 +271,7 @@ export interface IncreaseAdditionalValidatorStakeParams extends IncreaseValidato
  * Deposits a stake account into the pool in exchange for pool tokens
  */
 export type DepositStakeParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   validatorList: PublicKey;
   depositAuthority: PublicKey;
@@ -289,7 +289,7 @@ export type DepositStakeParams = {
  * Withdraws a stake account from the pool in exchange for pool tokens
  */
 export type WithdrawStakeParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   validatorList: PublicKey;
   withdrawAuthority: PublicKey;
@@ -307,7 +307,7 @@ export type WithdrawStakeParams = {
  * Withdraw sol instruction params
  */
 export type WithdrawSolParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   sourcePoolAccount: PublicKey;
   withdrawAuthority: PublicKey;
@@ -325,7 +325,7 @@ export type WithdrawSolParams = {
  * representing ownership into the pool. Inputs are converted to the current ratio.
  */
 export type DepositSolParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   depositAuthority?: PublicKey | undefined;
   withdrawAuthority: PublicKey;
@@ -339,7 +339,7 @@ export type DepositSolParams = {
 };
 
 export type CreateTokenMetadataParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   manager: PublicKey;
   tokenMetadata: PublicKey;
@@ -352,7 +352,7 @@ export type CreateTokenMetadataParams = {
 };
 
 export type UpdateTokenMetadataParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   manager: PublicKey;
   tokenMetadata: PublicKey;
@@ -363,7 +363,7 @@ export type UpdateTokenMetadataParams = {
 };
 
 export type AddValidatorToPoolParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   staker: PublicKey;
   reserveStake: PublicKey;
@@ -375,7 +375,7 @@ export type AddValidatorToPoolParams = {
 };
 
 export type RemoveValidatorFromPoolParams = {
-  programId: PublicKey;
+  programId?: PublicKey | undefined;
   stakePool: PublicKey;
   staker: PublicKey;
   withdrawAuthority: PublicKey;
@@ -423,7 +423,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -457,7 +457,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -499,7 +499,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -533,7 +533,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -556,7 +556,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -602,7 +602,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -652,7 +652,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -692,7 +692,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -736,7 +736,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -783,7 +783,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -830,7 +830,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -879,7 +879,7 @@ export class StakePoolInstruction {
     }
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -924,7 +924,7 @@ export class StakePoolInstruction {
     ];
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -975,7 +975,7 @@ export class StakePoolInstruction {
     }
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -1022,7 +1022,7 @@ export class StakePoolInstruction {
     });
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
@@ -1055,7 +1055,7 @@ export class StakePoolInstruction {
     });
 
     return new TransactionInstruction({
-      programId,
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
       data,
     });
