@@ -69,6 +69,7 @@ describe('StakePoolProgram', () => {
 
   it('StakePoolInstruction.addValidatorToPool', () => {
     const payload: AddValidatorToPoolParams = {
+      // omit program id to test default behavior
       stakePool: stakePoolAddress,
       staker: Keypair.generate().publicKey,
       reserveStake: Keypair.generate().publicKey,
@@ -90,6 +91,7 @@ describe('StakePoolProgram', () => {
     expect(instruction.keys[6].pubkey).toEqual(payload.validatorVote);
     expect(instruction.keys[11].pubkey).toEqual(SystemProgram.programId);
     expect(instruction.keys[12].pubkey).toEqual(StakeProgram.programId);
+    expect(instruction.programId).toEqual(STAKE_POOL_PROGRAM_ID);
 
     const decodedData = decodeData(
       STAKE_POOL_INSTRUCTION_LAYOUTS.AddValidatorToPool,
@@ -103,6 +105,7 @@ describe('StakePoolProgram', () => {
 
   it('StakePoolInstruction.removeValidatorFromPool', () => {
     const payload: RemoveValidatorFromPoolParams = {
+      programId: STAKE_POOL_PROGRAM_ID,
       stakePool: stakePoolAddress,
       staker: Keypair.generate().publicKey,
       withdrawAuthority: Keypair.generate().publicKey,
@@ -120,6 +123,7 @@ describe('StakePoolProgram', () => {
     expect(instruction.keys[4].pubkey).toEqual(payload.validatorStake);
     expect(instruction.keys[5].pubkey).toEqual(payload.transientStake);
     expect(instruction.keys[7].pubkey).toEqual(StakeProgram.programId);
+    expect(instruction.programId).toEqual(STAKE_POOL_PROGRAM_ID);
 
     const decodedData = decodeData(
       STAKE_POOL_INSTRUCTION_LAYOUTS.RemoveValidatorFromPool,
@@ -132,6 +136,7 @@ describe('StakePoolProgram', () => {
 
   it('StakePoolInstruction.depositSol', () => {
     const payload: DepositSolParams = {
+      programId: STAKE_POOL_PROGRAM_ID,
       stakePool: stakePoolAddress,
       withdrawAuthority: Keypair.generate().publicKey,
       reserveStake: Keypair.generate().publicKey,
