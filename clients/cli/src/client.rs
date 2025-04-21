@@ -84,10 +84,11 @@ pub(crate) fn get_stake_state(
 
 pub(crate) fn get_stake_pools(
     rpc_client: &RpcClient,
+    stake_pool_program_id: &Pubkey,
 ) -> Result<Vec<(Pubkey, StakePool, ValidatorList, Pubkey)>, ClientError> {
     rpc_client
         .get_program_accounts_with_config(
-            &spl_stake_pool::id(),
+            stake_pool_program_id,
             RpcProgramAccountsConfig {
                 // 0 is the account type
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new(
@@ -106,7 +107,7 @@ pub(crate) fn get_stake_pools(
                 .into_iter()
                 .filter_map(|(address, account)| {
                     let pool_withdraw_authority =
-                        find_withdraw_authority_program_address(&spl_stake_pool::id(), &address).0;
+                        find_withdraw_authority_program_address(stake_pool_program_id, &address).0;
                     match try_from_slice_unchecked::<StakePool>(account.data.as_slice()) {
                         Ok(stake_pool) => {
                             get_validator_list(rpc_client, &stake_pool.validator_list)

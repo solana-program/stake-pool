@@ -2185,7 +2185,7 @@ fn command_set_fee(
 }
 
 fn command_list_all_pools(config: &Config) -> CommandResult {
-    let all_pools = get_stake_pools(&config.rpc_client)?;
+    let all_pools = get_stake_pools(&config.rpc_client, &config.stake_pool_program_id)?;
     let cli_stake_pool_vec: Vec<CliStakePool> =
         all_pools.into_iter().map(CliStakePool::from).collect();
     let cli_stake_pools = CliStakePools {
