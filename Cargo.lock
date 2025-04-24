@@ -7152,7 +7152,7 @@ dependencies = [
  "spl-associated-token-account-client",
  "spl-stake-pool",
  "spl-token 8.0.0",
- "spl-token-2022 7.0.0",
+ "spl-token-2022 8.0.1",
 ]
 
 [[package]]
