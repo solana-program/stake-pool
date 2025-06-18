@@ -7,5 +7,5 @@ packaging==25.0
 pluggy==1.6.0
 pycodestyle==2.13.0
 pyflakes==3.3.2
-pytest==8.4.0
+pytest==8.4.1
 pytest-asyncio==1.0.0
