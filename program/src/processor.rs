@@ -2088,6 +2088,8 @@ impl Processor {
                                     stake_history_info.clone(),
                                 )?;
                                 validator_stake_record.status.remove_validator_stake()?;
+                            } else {
+                                active_stake_lamports = validator_stake_info.lamports();
                             }
                         }
                         StakeStatus::DeactivatingTransient | StakeStatus::ReadyForRemoval => {

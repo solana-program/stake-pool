@@ -448,7 +448,7 @@ async fn success_with_deactivating_transient_stake() {
     .await
     .unwrap();
 
-    // increase the validator stake
+    // decrease the validator stake
     let error = stake_pool_accounts
         .decrease_validator_stake_either(
             &mut context.banks_client,
@@ -843,3 +843,101 @@ async fn fail_not_updated_stake_pool() {} // TODO
 
 #[tokio::test]
 async fn fail_with_uninitialized_validator_list_account() {} // TODO
+
+#[tokio::test]
+async fn update_no_merge_after_removal() {
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    let _ = simple_deposit_stake(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        &validator_stake,
+        TEST_STAKE_AMOUNT,
+    )
+    .await
+    .unwrap();
+
+    // warp forward to activation
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    let slot = first_normal_slot + slots_per_epoch + 1;
+    context.warp_to_slot(slot).unwrap();
+
+    let error = stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            false,
+        )
+        .await;
+    assert!(error.is_none(), "{:?}", error);
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
+
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await;
+    assert!(error.is_none(), "{:?}", error);
+
+    // Run update with merge
+    let error = stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            false,
+        )
+        .await;
+    assert!(error.is_none(), "{:?}", error);
+
+    // Check validator entry unchanged
+    let validator_list = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    let expected_list = state::ValidatorList {
+        header: state::ValidatorListHeader {
+            account_type: state::AccountType::ValidatorList,
+            max_validators: stake_pool_accounts.max_validators,
+        },
+        validators: vec![state::ValidatorStakeInfo {
+            status: state::StakeStatus::DeactivatingValidator.into(),
+            vote_account_address: validator_stake.vote.pubkey(),
+            last_update_epoch: 15.into(),
+            active_stake_lamports: (stake_rent * 2 + TEST_STAKE_AMOUNT + current_minimum_delegation).into(),
+            transient_stake_lamports: 0.into(),
+            transient_seed_suffix: 0.into(),
+            unused: 0.into(),
+            validator_seed_suffix: validator_stake
+                .validator_stake_seed
+                .map(|s| s.get())
+                .unwrap_or(0)
+                .into(),
+        }],
+    };
+    assert_eq!(validator_list, expected_list);
+}
