@@ -928,7 +928,10 @@ async fn update_no_merge_after_removal() {
             status: state::StakeStatus::DeactivatingValidator.into(),
             vote_account_address: validator_stake.vote.pubkey(),
             last_update_epoch: 15.into(),
-            active_stake_lamports: (stake_rent * 2 + TEST_STAKE_AMOUNT + current_minimum_delegation).into(),
+            active_stake_lamports: (stake_rent * 2
+                + TEST_STAKE_AMOUNT
+                + current_minimum_delegation)
+                .into(),
             transient_stake_lamports: 0.into(),
             transient_seed_suffix: 0.into(),
             unused: 0.into(),
