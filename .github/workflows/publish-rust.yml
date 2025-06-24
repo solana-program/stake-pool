@@ -88,7 +88,9 @@ jobs:
           cargo-cache-fallback-key: cargo-publish
 
       - name: Install Cargo Release
-        run: which cargo-release || cargo install cargo-release
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-release
 
       - name: Ensure CARGO_REGISTRY_TOKEN variable is set
         env:
