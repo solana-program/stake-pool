@@ -332,7 +332,7 @@ describe('StakePoolProgram', () => {
       connection.getAccountInfo = jest.fn(async () => null);
       await expect(
         withdrawSol(connection, stakePoolAddress, tokenOwner, solReceiver, 1),
-      ).rejects.toThrowError('Invalid stake pool account');
+      ).rejects.toThrow('Invalid stake pool account');
     });
 
     it('should throw an error with invalid token account', async () => {
