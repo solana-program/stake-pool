@@ -2342,7 +2342,17 @@ fn main() {
                 .validator(is_valid_signer)
                 .takes_value(true)
                 .global(true)
-                .help("Transaction fee payer account [default: cli config keypair]"),
+                .help("Transaction fee payer account [defaults: cli config keypair]"),
+        )
+        .arg(
+            Arg::with_name("keypair_path")
+                .long("keypair-path")
+                .short("k")
+                .value_name("PATH")
+                .validator(is_keypair_or_ask_keyword)
+                .takes_value(true)
+                .global(true)
+                .help("Default keypair path for all operations [default: cli config keypair]"),
         )
         .arg(compute_unit_price_arg().validator(is_parsable::<u64>).global(true))
         .arg(
@@ -3146,6 +3156,11 @@ fn main() {
     } else {
         solana_cli_config::Config::default()
     };
+
+    let default_keypair_path = matches
+        .value_of("keypair_path")
+        .unwrap_or(&cli_config.keypair_path);
+
     let config = {
         let json_rpc_url = value_t!(matches, "json_rpc_url", String)
             .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
@@ -3153,7 +3168,7 @@ fn main() {
         let staker = get_signer(
             &matches,
             "staker",
-            &cli_config.keypair_path,
+            default_keypair_path,
             &mut wallet_manager,
             SignerFromPathConfig {
                 allow_null_signer: false,
@@ -3164,7 +3179,7 @@ fn main() {
             Some(get_signer(
                 &matches,
                 "funding_authority",
-                &cli_config.keypair_path,
+                default_keypair_path,
                 &mut wallet_manager,
                 SignerFromPathConfig {
                     allow_null_signer: false,
@@ -3176,7 +3191,7 @@ fn main() {
         let manager = get_signer(
             &matches,
             "manager",
-            &cli_config.keypair_path,
+            default_keypair_path,
             &mut wallet_manager,
             SignerFromPathConfig {
                 allow_null_signer: false,
@@ -3185,7 +3200,7 @@ fn main() {
         let token_owner = get_signer(
             &matches,
             "token_owner",
-            &cli_config.keypair_path,
+            default_keypair_path,
             &mut wallet_manager,
             SignerFromPathConfig {
                 allow_null_signer: false,
@@ -3194,7 +3209,7 @@ fn main() {
         let fee_payer = get_signer(
             &matches,
             "fee_payer",
-            &cli_config.keypair_path,
+            default_keypair_path,
             &mut wallet_manager,
             SignerFromPathConfig {
                 allow_null_signer: false,
@@ -3351,7 +3366,7 @@ fn main() {
             let withdraw_authority = get_signer(
                 arg_matches,
                 "withdraw_authority",
-                &cli_config.keypair_path,
+                default_keypair_path,
                 &mut wallet_manager,
                 SignerFromPathConfig {
                     allow_null_signer: false,
@@ -3416,7 +3431,7 @@ fn main() {
             let sol_receiver = get_signer(
                 arg_matches,
                 "sol_receiver",
-                &cli_config.keypair_path,
+                default_keypair_path,
                 &mut wallet_manager,
                 SignerFromPathConfig {
                     allow_null_signer: true,
@@ -3529,7 +3544,7 @@ fn main() {
             let withdraw_authority = get_signer(
                 arg_matches,
                 "withdraw_authority",
-                &cli_config.keypair_path,
+                default_keypair_path,
                 &mut wallet_manager,
                 SignerFromPathConfig {
                     allow_null_signer: false,
