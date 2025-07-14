@@ -13,10 +13,10 @@ use {
         hash::Hash,
         instruction::InstructionError,
         signature::Signer,
-        stake::state::{Authorized, Lockup, StakeStateV2},
-        system_instruction,
         transaction::{Transaction, TransactionError},
     },
+    solana_stake_interface::state::{Authorized, Lockup, StakeStateV2},
+    solana_system_interface::instruction as system_instruction,
     spl_stake_pool::{
         error::StakePoolError, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address, id, state::StakePool, MINIMUM_RESERVE_LAMPORTS,
