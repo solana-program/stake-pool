@@ -40,9 +40,9 @@ use {
         native_token::{self, Sol},
         signature::{Keypair, Signer},
         signers::Signers,
-        system_instruction,
         transaction::Transaction,
     },
+    solana_system_interface::instruction as system_instruction,
     spl_associated_token_account::instruction::create_associated_token_account,
     spl_associated_token_account_client::address::get_associated_token_address_with_program_id,
     spl_stake_pool::{
@@ -886,9 +886,8 @@ fn command_increase_validator_stake(
     config: &Config,
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
-    amount: f64,
+    lamports: u64,
 ) -> CommandResult {
-    let lamports = native_token::sol_to_lamports(amount);
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
     }
@@ -925,9 +924,8 @@ fn command_decrease_validator_stake(
     config: &Config,
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
-    amount: f64,
+    lamports: u64,
 ) -> CommandResult {
-    let lamports = native_token::sol_to_lamports(amount);
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
     }
@@ -1285,23 +1283,21 @@ fn command_deposit_sol(
     from: &Option<Keypair>,
     pool_token_receiver_account: &Option<Pubkey>,
     referrer_token_account: &Option<Pubkey>,
-    amount: f64,
+    lamports: u64,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
     }
-
-    let amount = native_token::sol_to_lamports(amount);
 
     // Check withdraw_from balance
     let from_pubkey = from
         .as_ref()
         .map_or_else(|| config.fee_payer.pubkey(), |keypair| keypair.pubkey());
     let from_balance = config.rpc_client.get_balance(&from_pubkey)?;
-    if from_balance < amount {
+    if from_balance < lamports {
         return Err(format!(
             "Not enough SOL to deposit into pool: {}.\nMaximum deposit amount is {} SOL.",
-            Sol(amount),
+            Sol(lamports),
             Sol(from_balance)
         )
         .into());
@@ -1324,7 +1320,7 @@ fn command_deposit_sol(
     instructions.push(system_instruction::transfer(
         &from_pubkey,
         &user_sol_transfer.pubkey(),
-        amount,
+        lamports,
     ));
 
     // Create token account if not specified
@@ -1370,7 +1366,7 @@ fn command_deposit_sol(
             &referrer_token_account,
             &stake_pool.pool_mint,
             &stake_pool.token_program_id,
-            amount,
+            lamports,
         )
     } else {
         spl_stake_pool::instruction::deposit_sol(
@@ -1384,7 +1380,7 @@ fn command_deposit_sol(
             &referrer_token_account,
             &stake_pool.pool_mint,
             &stake_pool.token_program_id,
-            amount,
+            lamports,
         )
     };
 
@@ -3316,14 +3312,16 @@ fn main() {
         ("increase-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            command_increase_validator_stake(&config, &stake_pool_address, &vote_account, amount)
+            let amount_str = arg_matches.value_of("amount").unwrap();
+            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
+            command_increase_validator_stake(&config, &stake_pool_address, &vote_account, lamports)
         }
         ("decrease-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            command_decrease_validator_stake(&config, &stake_pool_address, &vote_account, amount)
+            let amount_str = arg_matches.value_of("amount").unwrap();
+            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
+            command_decrease_validator_stake(&config, &stake_pool_address, &vote_account, lamports)
         }
         ("set-preferred-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
@@ -3371,14 +3369,15 @@ fn main() {
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             let referrer: Option<Pubkey> = pubkey_of(arg_matches, "referrer");
             let from = keypair_of(arg_matches, "from");
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount_str = arg_matches.value_of("amount").unwrap();
+            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
             command_deposit_sol(
                 &config,
                 &stake_pool_address,
                 &from,
                 &token_receiver,
                 &referrer,
-                amount,
+                lamports,
             )
         }
         ("list", Some(arg_matches)) => {
