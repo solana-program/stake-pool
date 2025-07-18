@@ -6,9 +6,10 @@ mod helpers;
 use {
     bincode::deserialize,
     helpers::*,
-    solana_program::{pubkey::Pubkey, stake},
+    solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::signature::{Keypair, Signer},
+    solana_stake_interface as stake,
     spl_stake_pool::minimum_stake_lamports,
 };
 

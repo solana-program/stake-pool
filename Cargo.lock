@@ -7513,6 +7513,7 @@ dependencies = [
  "solana-program",
  "solana-remote-wallet",
  "solana-sdk",
+ "solana-stake-interface",
  "solana-system-interface",
  "spl-associated-token-account",
  "spl-associated-token-account-client",

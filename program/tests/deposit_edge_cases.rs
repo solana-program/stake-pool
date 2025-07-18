@@ -6,13 +6,14 @@ mod helpers;
 use {
     helpers::*,
     solana_program::{
-        borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey, stake,
+        borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
     },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
+    solana_stake_interface as stake,
     spl_stake_pool::{error::StakePoolError, id, instruction, state, MINIMUM_RESERVE_LAMPORTS},
 };
 

@@ -12,7 +12,7 @@ use {
         instruction::{AccountMeta, Instruction},
         program_pack::Pack,
         pubkey::Pubkey,
-        stake, system_instruction, sysvar,
+        sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -21,6 +21,8 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
+    solana_stake_interface as stake,
+    solana_system_interface::instruction as system_instruction,
     spl_stake_pool::{error, id, instruction, state, MINIMUM_RESERVE_LAMPORTS},
     spl_token_2022::extension::ExtensionType,
     test_case::test_case,

@@ -8,12 +8,13 @@ use {
     assert_matches::assert_matches,
     bincode::deserialize,
     helpers::*,
-    solana_program::{clock::Epoch, instruction::InstructionError, pubkey::Pubkey, stake},
+    solana_program::{clock::Epoch, instruction::InstructionError, pubkey::Pubkey},
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
+    solana_stake_interface as stake,
     spl_stake_pool::{
         error::StakePoolError, find_ephemeral_stake_program_address,
         find_transient_stake_program_address, id, instruction, MINIMUM_RESERVE_LAMPORTS,

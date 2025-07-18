@@ -5,13 +5,14 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh1::try_from_slice_unchecked, pubkey::Pubkey, stake},
+    solana_program::{borsh1::try_from_slice_unchecked, pubkey::Pubkey},
     solana_program_test::*,
     solana_sdk::{
         native_token::LAMPORTS_PER_SOL,
         signature::{Keypair, Signer},
         transaction::Transaction,
     },
+    solana_stake_interface as stake,
     spl_stake_pool::{
         find_stake_program_address, find_transient_stake_program_address, id,
         instruction::{self, PreferredValidatorType},

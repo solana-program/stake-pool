@@ -9,7 +9,6 @@ use {
         program_option::COption,
         program_pack::Pack,
         pubkey::Pubkey,
-        stake, system_instruction, system_program,
     },
     solana_program_test::{processor, BanksClient, ProgramTest, ProgramTestContext},
     solana_sdk::{
@@ -20,6 +19,8 @@ use {
         transaction::Transaction,
         transport::TransportError,
     },
+    solana_stake_interface as stake,
+    solana_system_interface::{instruction as system_instruction, program as system_program},
     solana_vote_program::{
         self, vote_instruction,
         vote_state::{VoteInit, VoteState, VoteStateVersions},
