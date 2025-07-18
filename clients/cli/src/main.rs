@@ -29,7 +29,6 @@ use {
         instruction::Instruction,
         program_pack::Pack,
         pubkey::Pubkey,
-        stake,
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
@@ -42,6 +41,7 @@ use {
         signers::Signers,
         transaction::Transaction,
     },
+    solana_stake_interface as stake,
     solana_system_interface::instruction as system_instruction,
     spl_associated_token_account::instruction::create_associated_token_account,
     spl_associated_token_account_client::address::get_associated_token_address_with_program_id,

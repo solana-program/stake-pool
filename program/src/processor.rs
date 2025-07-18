@@ -33,9 +33,10 @@ use {
         program_error::{PrintProgramError, ProgramError},
         pubkey::Pubkey,
         rent::Rent,
-        stake, system_instruction, system_program,
         sysvar::Sysvar,
     },
+    solana_stake_interface as stake,
+    solana_system_interface::{instruction as system_instruction, program as system_program},
     spl_token_2022::{
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
@@ -1618,7 +1619,7 @@ impl Processor {
                 lamports
             );
             return Err(ProgramError::Custom(
-                stake::instruction::StakeError::InsufficientDelegation as u32,
+                stake::error::StakeError::InsufficientDelegation as u32,
             ));
         }
 

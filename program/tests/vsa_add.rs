@@ -11,7 +11,7 @@ use {
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        stake, system_program, sysvar,
+        sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -19,6 +19,8 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
+    solana_stake_interface as stake,
+    solana_system_interface::program as system_program,
     spl_stake_pool::{
         error::StakePoolError, find_stake_program_address, id, instruction, state,
         MINIMUM_RESERVE_LAMPORTS,

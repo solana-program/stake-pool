@@ -9,9 +9,10 @@ use {
     },
     solana_program::{
         borsh1::try_from_slice_unchecked, hash::Hash, instruction::Instruction, message::Message,
-        program_pack::Pack, pubkey::Pubkey, stake,
+        program_pack::Pack, pubkey::Pubkey,
     },
     solana_sdk::{compute_budget::ComputeBudgetInstruction, transaction::Transaction},
+    solana_stake_interface as stake,
     spl_stake_pool::{
         find_withdraw_authority_program_address,
         state::{StakePool, ValidatorList},

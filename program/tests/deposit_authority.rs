@@ -5,13 +5,14 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{instruction::InstructionError, stake},
+    solana_program::instruction::InstructionError,
     solana_program_test::*,
     solana_sdk::{
         borsh1::try_from_slice_unchecked,
         signature::{Keypair, Signer},
         transaction::TransactionError,
     },
+    solana_stake_interface as stake,
     spl_stake_pool::{error::StakePoolError, state::StakePool, MINIMUM_RESERVE_LAMPORTS},
 };
 
