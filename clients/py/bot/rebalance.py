@@ -1,10 +1,11 @@
 import argparse
 import asyncio
-import json
+import httpx
 
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 from solana.rpc.async_api import AsyncClient
+from solana.rpc.providers import async_http
 from solana.rpc.commitment import Confirmed
 
 from stake.constants import STAKE_LEN, LAMPORTS_PER_SOL
@@ -13,9 +14,22 @@ from stake_pool.constants import MINIMUM_ACTIVE_STAKE
 from stake_pool.state import StakePool, ValidatorList
 
 
+class InsecureAsyncHTTPProvider(async_http.AsyncHTTPProvider):
+    def __init__(self, endpoint, timeout=10, extra_headers=None, proxy=None):
+        super().__init__(endpoint, extra_headers=extra_headers)
+        self.session = httpx.AsyncClient(timeout=timeout, proxy=proxy, verify=False)
+
+
+class InsecureAsyncClient(AsyncClient):
+    def __init__(self, endpoint, commitment=None, timeout=10, extra_headers=None, proxy=None):
+        super().__init__(endpoint, commitment, timeout, extra_headers, proxy)
+        # Override the default provider with our custom one
+        self._provider = InsecureAsyncHTTPProvider(endpoint, timeout, extra_headers, proxy)
+
+
 async def get_client(endpoint: str) -> AsyncClient:
     print(f'Connecting to network at {endpoint}')
-    async_client = AsyncClient(endpoint=endpoint, commitment=Confirmed)
+    async_client = InsecureAsyncClient(endpoint=endpoint, commitment=Confirmed)
     total_attempts = 10
     current_attempt = 0
     while not await async_client.is_connected():
@@ -105,9 +119,7 @@ increase of {lamports_to_increase} less than the minimum of {MINIMUM_ACTIVE_STAK
 def keypair_from_file(keyfile_name: str) -> Keypair:
     with open(keyfile_name, 'r') as keyfile:
         data = keyfile.read()
-    int_list = json.loads(data)
-    bytes_list = [value.to_bytes(1, 'little') for value in int_list]
-    return Keypair.from_seed(b''.join(bytes_list))
+    return Keypair.from_json(data)
 
 
 if __name__ == "__main__":
@@ -124,7 +136,7 @@ if __name__ == "__main__":
                         help='RPC endpoint to use, e.g. https://api.mainnet-beta.solana.com')
 
     args = parser.parse_args()
-    stake_pool = Pubkey(args.stake_pool)
+    stake_pool = Pubkey.from_string(args.stake_pool)
     staker = keypair_from_file(args.staker)
     print(f'Rebalancing stake pool {stake_pool}')
     print(f'Staker public key: {staker.pubkey()}')
