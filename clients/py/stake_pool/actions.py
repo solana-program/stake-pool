@@ -425,10 +425,10 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
     resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
     data = resp.value.data if resp.value else bytes()
     validator_list = ValidatorList.decode(data)
-    (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
+    (withdraw_authority, _seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
     update_list_instructions = []
     validator_chunks = [
-        validator_list.validators[i:i+MAX_VALIDATORS_TO_UPDATE]
+        validator_list.validators[i:i + MAX_VALIDATORS_TO_UPDATE]
         for i in range(0, len(validator_list.validators), MAX_VALIDATORS_TO_UPDATE)
     ]
     start_index = 0
