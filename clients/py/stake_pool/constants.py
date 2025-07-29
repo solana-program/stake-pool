@@ -8,7 +8,7 @@ from stake.constants import MINIMUM_DELEGATION
 STAKE_POOL_PROGRAM_ID = Pubkey.from_string("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy")
 """Public key that identifies the SPL Stake Pool program."""
 
-MAX_VALIDATORS_TO_UPDATE: int = 5
+MAX_VALIDATORS_TO_UPDATE: int = 4
 """Maximum number of validators to update during UpdateValidatorListBalance."""
 
 MINIMUM_RESERVE_LAMPORTS: int = 0
