@@ -187,8 +187,6 @@ async def service_mode(
     async_client = await get_client(endpoint)
     current_epoch = None
     rebalanced_in_current_epoch = False
-    updated_for_new_epoch = False
-
     print("Starting service mode - monitoring epoch progress...")
 
     while True:
@@ -197,13 +195,13 @@ async def service_mode(
 
             print(f"Current epoch: {epoch}, progress: {progress:.2%}")
 
-            if epoch != current_epoch and not updated_for_new_epoch:
+            if epoch != current_epoch:
                 print(f"New epoch detected: {epoch} (previous: {current_epoch})")
                 print(f"Updating stake pool for new epoch {epoch}")
                 await update_stake_pool(async_client, staker, stake_pool_address)
+                print(f"Updating stake pool for new epoch {epoch} done")
                 current_epoch = epoch
                 rebalanced_in_current_epoch = False
-                updated_for_new_epoch = True
 
             if progress >= 0.95 and not rebalanced_in_current_epoch:
                 print(f"Epoch {epoch} is {progress:.2%} complete - starting rebalance")
