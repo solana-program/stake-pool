@@ -16,7 +16,7 @@ export const DEVNET_STAKE_POOL_PROGRAM_ID = new PublicKey(
 );
 
 // Maximum number of validators to update during UpdateValidatorListBalance.
-export const MAX_VALIDATORS_TO_UPDATE = 5;
+export const MAX_VALIDATORS_TO_UPDATE = 4;
 
 // Seed for ephemeral stake account
 export const EPHEMERAL_STAKE_SEED_PREFIX = Buffer.from('ephemeral');

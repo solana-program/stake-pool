@@ -42,7 +42,7 @@ pub const MINIMUM_RESERVE_LAMPORTS: u64 = 0;
 
 /// Maximum amount of validator stake accounts to update per
 /// `UpdateValidatorListBalance` instruction, based on compute limits
-pub const MAX_VALIDATORS_TO_UPDATE: usize = 5;
+pub const MAX_VALIDATORS_TO_UPDATE: usize = 4;
 
 /// Maximum factor by which a withdrawal fee can be increased per epoch
 /// protecting stakers from malicious users.
