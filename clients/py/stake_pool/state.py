@@ -12,7 +12,7 @@ PUBLIC_KEY_LAYOUT = Bytes(32)
 
 def decode_optional_publickey(container: Container) -> Optional[Pubkey]:
     if container:
-        return Pubkey(container.popitem()[1])
+        return Pubkey(container)
     else:
         return None
 
