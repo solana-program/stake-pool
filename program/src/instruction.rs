@@ -737,6 +737,25 @@ pub enum StakePoolInstruction {
         /// Minimum amount of lamports that must be received
         minimum_lamports_out: u64,
     },
+
+    ///   Deposit wrapped SOL directly into the pool's reserve account.
+    ///   The WSOL account is closed and its lamports used for the deposit.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Reserve stake account, to deposit SOL
+    ///   3. `[w]` WSOL account to unwrap
+    ///   4. `[s]` User authority for the WSOL account
+    ///   5. `[s]` User system account receiving the unwrapped lamports
+    ///   6. `[w]` User account to receive pool tokens
+    ///   7. `[w]` Account to receive fee tokens
+    ///   8. `[w]` Account to receive a portion of fee as referral fees
+    ///   9. `[w]` Pool token mint account
+    ///  10. `[]` System program account
+    ///  11. `[]` Token program id
+    ///  12. `[]` Wrapped SOL mint
+    ///  13. `[s]` (Optional) Stake pool sol deposit authority
+    DepositWsol(u64),
 }
 
 /// Creates an `Initialize` instruction.
