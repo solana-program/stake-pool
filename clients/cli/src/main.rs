@@ -1401,6 +1401,141 @@ fn command_deposit_sol(
     Ok(())
 }
 
+fn command_deposit_wsol(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    from: &Option<Keypair>,
+    pool_token_receiver_account: &Option<Pubkey>,
+    referrer_token_account: &Option<Pubkey>,
+    lamports: u64,
+) -> CommandResult {
+    if !config.no_update {
+        command_update(config, stake_pool_address, false, false, false)?;
+    }
+
+    let from_pubkey = from
+        .as_ref()
+        .map_or_else(|| config.fee_payer.pubkey(), |keypair| keypair.pubkey());
+    let from_balance = config.rpc_client.get_balance(&from_pubkey)?;
+    if from_balance < lamports {
+        return Err(format!(
+            "Not enough SOL to deposit into pool: {}.\nMaximum deposit amount is {} SOL.",
+            Sol(lamports),
+            Sol(from_balance)
+        )
+        .into());
+    }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+
+    let mut instructions: Vec<Instruction> = vec![];
+
+    let user_wsol_account = Keypair::new();
+    let mut signers = vec![config.fee_payer.as_ref(), &user_wsol_account];
+    if let Some(keypair) = from.as_ref() {
+        signers.push(keypair);
+    }
+
+    let mut total_rent_free_balances: u64 = 0;
+
+    let rent = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(spl_token_2022::state::Account::LEN)?;
+
+    instructions.push(system_instruction::create_account(
+        &from_pubkey,
+        &user_wsol_account.pubkey(),
+        lamports + rent,
+        spl_token_2022::state::Account::LEN as u64,
+        &stake_pool.token_program_id,
+    ));
+    instructions.push(spl_token_2022::instruction::initialize_account(
+        &stake_pool.token_program_id,
+        &user_wsol_account.pubkey(),
+        &spl_token_2022::native_mint::id(),
+        &from_pubkey,
+    )?);
+
+    let pool_token_receiver_account =
+        pool_token_receiver_account.unwrap_or(add_associated_token_account(
+            config,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            &config.token_owner.pubkey(),
+            &mut instructions,
+            &mut total_rent_free_balances,
+        ));
+
+    let referrer_token_account = referrer_token_account.unwrap_or(pool_token_receiver_account);
+
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&config.stake_pool_program_id, stake_pool_address)
+            .0;
+
+    let deposit_instruction = if let Some(deposit_authority) = config.funding_authority.as_ref() {
+        let expected_sol_deposit_authority = stake_pool.sol_deposit_authority.ok_or_else(|| {
+            "SOL deposit authority specified in arguments but stake pool has none".to_string()
+        })?;
+        signers.push(deposit_authority.as_ref());
+        if deposit_authority.pubkey() != expected_sol_deposit_authority {
+            let error = format!(
+                "Invalid deposit authority specified, expected {}, received {}",
+                expected_sol_deposit_authority,
+                deposit_authority.pubkey()
+            );
+            return Err(error.into());
+        }
+
+        spl_stake_pool::instruction::deposit_wsol(
+            &config.stake_pool_program_id,
+            stake_pool_address,
+            &pool_withdraw_authority,
+            &stake_pool.reserve_stake,
+            &user_wsol_account.pubkey(),
+            &from_pubkey,
+            &from_pubkey,
+            &pool_token_receiver_account,
+            &stake_pool.manager_fee_account,
+            &referrer_token_account,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            &spl_token_2022::native_mint::id(),
+            Some(&deposit_authority.pubkey()),
+            lamports,
+        )
+    } else {
+        spl_stake_pool::instruction::deposit_wsol(
+            &config.stake_pool_program_id,
+            stake_pool_address,
+            &pool_withdraw_authority,
+            &stake_pool.reserve_stake,
+            &user_wsol_account.pubkey(),
+            &from_pubkey,
+            &from_pubkey,
+            &pool_token_receiver_account,
+            &stake_pool.manager_fee_account,
+            &referrer_token_account,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            &spl_token_2022::native_mint::id(),
+            None,
+            lamports,
+        )
+    };
+
+    instructions.push(deposit_instruction);
+
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers_and_additional_fee(
+        config,
+        &instructions,
+        &signers,
+        total_rent_free_balances,
+    )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
 fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let reserve_stake_account_address = stake_pool.reserve_stake.to_string();
@@ -2838,6 +2973,52 @@ fn main() {
                           Defaults to the token receiver."),
             )
         )
+        .subcommand(SubCommand::with_name("deposit-wsol")
+            .about("Deposit wrapped SOL into the stake pool in exchange for pool tokens")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            ).arg(
+                Arg::with_name("amount")
+                    .index(2)
+                    .validator(is_amount)
+                    .value_name("AMOUNT")
+                    .takes_value(true)
+                    .help("Amount in SOL to deposit into the stake pool reserve account."),
+            )
+            .arg(
+                Arg::with_name("from")
+                    .long("from")
+                    .validator(is_valid_signer)
+                    .value_name("KEYPAIR")
+                    .takes_value(true)
+                    .help("Source account of funds. [default: cli config keypair]"),
+            )
+            .arg(
+                Arg::with_name("token_receiver")
+                    .long("token-receiver")
+                    .validator(is_pubkey)
+                    .value_name("POOL_TOKEN_RECEIVER_ADDRESS")
+                    .takes_value(true)
+                    .help("Account to receive the minted pool tokens. \
+                          Defaults to the token-owner's associated pool token account. \
+                          Creates the account if it does not exist."),
+            )
+            .arg(
+                Arg::with_name("referrer")
+                    .long("referrer")
+                    .validator(is_pubkey)
+                    .value_name("REFERRER_TOKEN_ADDRESS")
+                    .takes_value(true)
+                    .help("Account to receive the referral fees for deposits. \
+                          Defaults to the token receiver."),
+            )
+        )
         .subcommand(SubCommand::with_name("list")
             .about("List stake accounts managed by this pool")
             .arg(
@@ -3379,6 +3560,22 @@ fn main() {
                 &token_receiver,
                 &referrer,
                 amount,
+            )
+        }
+        ("deposit-wsol", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
+            let referrer: Option<Pubkey> = pubkey_of(arg_matches, "referrer");
+            let from = keypair_of(arg_matches, "from");
+            let amount_str = arg_matches.value_of("amount").unwrap();
+            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
+            command_deposit_wsol(
+                &config,
+                &stake_pool_address,
+                &from,
+                &token_receiver,
+                &referrer,
+                lamports,
             )
         }
         ("list", Some(arg_matches)) => {

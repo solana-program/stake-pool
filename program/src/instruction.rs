@@ -2216,6 +2216,50 @@ pub fn deposit_sol_with_authority_and_slippage(
     )
 }
 
+/// Creates instruction to deposit wrapped SOL directly into a stake pool.
+/// The provided WSOL account will be closed and its lamports deposited.
+pub fn deposit_wsol(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    wsol_account: &Pubkey,
+    wsol_authority: &Pubkey,
+    lamports_destination: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    wsol_mint: &Pubkey,
+    sol_deposit_authority: Option<&Pubkey>,
+    lamports_in: u64,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*wsol_account, false),
+        AccountMeta::new_readonly(*wsol_authority, true),
+        AccountMeta::new(*lamports_destination, true),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*wsol_mint, false),
+    ];
+    if let Some(auth) = sol_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(*auth, true));
+    }
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&StakePoolInstruction::DepositWsol(lamports_in)).unwrap(),
+    }
+}
+
 fn withdraw_stake_internal(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
