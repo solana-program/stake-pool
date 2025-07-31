@@ -41,7 +41,7 @@ use {
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
         native_mint,
-        state::{Account, Mint},
+        state::Mint,
     },
     std::num::NonZeroU32,
 };
