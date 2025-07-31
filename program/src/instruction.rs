@@ -746,7 +746,7 @@ pub enum StakePoolInstruction {
     ///   2. `[w]` Reserve stake account, to deposit SOL
     ///   3. `[w]` WSOL account to unwrap
     ///   4. `[s]` User authority for the WSOL account
-    ///   5. `[s]` User system account receiving the unwrapped lamports
+    ///   5. `[w]` User system account receiving the unwrapped lamports
     ///   6. `[w]` User account to receive pool tokens
     ///   7. `[w]` Account to receive fee tokens
     ///   8. `[w]` Account to receive a portion of fee as referral fees
@@ -2241,7 +2241,7 @@ pub fn deposit_wsol(
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*wsol_account, false),
         AccountMeta::new_readonly(*wsol_authority, true),
-        AccountMeta::new(*lamports_destination, true),
+        AccountMeta::new(*lamports_destination, false),
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*referrer_pool_tokens_account, false),
