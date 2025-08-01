@@ -1222,7 +1222,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let wsol_account = spl_token_2022::state::Account::unpack(&from_wsol_info.data.borrow())?;
-        if wsol_account.mint != *wsol_mint_info.key || *wsol_mint_info.key != native_mint::id() {
+        if wsol_account.mint != *wsol_mint_info.key || *wsol_mint_info.key != spl_token::native_mint::id() {
             return Err(StakePoolError::WrongAccountMint.into());
         }
         if wsol_account.owner != *user_authority_info.key {
