@@ -1407,20 +1407,22 @@ fn command_deposit_wsol(
     from: &Option<Keypair>,
     pool_token_receiver_account: &Option<Pubkey>,
     referrer_token_account: &Option<Pubkey>,
-    lamports: u64,
+    amount: f64,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
     }
 
+    let amount = native_token::sol_to_lamports(amount);
+
     let from_pubkey = from
         .as_ref()
         .map_or_else(|| config.fee_payer.pubkey(), |keypair| keypair.pubkey());
     let from_balance = config.rpc_client.get_balance(&from_pubkey)?;
-    if from_balance < lamports {
+    if from_balance < amount {
         return Err(format!(
             "Not enough SOL to deposit into pool: {}.\nMaximum deposit amount is {} SOL.",
-            Sol(lamports),
+            Sol(amount),
             Sol(from_balance)
         )
         .into());
@@ -1445,7 +1447,7 @@ fn command_deposit_wsol(
     instructions.push(system_instruction::create_account(
         &from_pubkey,
         &user_wsol_account.pubkey(),
-        lamports + rent,
+        amount + rent,
         spl_token_2022::state::Account::LEN as u64,
         &stake_pool.token_program_id,
     ));
@@ -1501,7 +1503,7 @@ fn command_deposit_wsol(
             &stake_pool.token_program_id,
             &spl_token_2022::native_mint::id(),
             Some(&deposit_authority.pubkey()),
-            lamports,
+            amount,
         )
     } else {
         spl_stake_pool::instruction::deposit_wsol(
@@ -1519,7 +1521,7 @@ fn command_deposit_wsol(
             &stake_pool.token_program_id,
             &spl_token_2022::native_mint::id(),
             None,
-            lamports,
+            amount,
         )
     };
 
@@ -3567,15 +3569,14 @@ fn main() {
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             let referrer: Option<Pubkey> = pubkey_of(arg_matches, "referrer");
             let from = keypair_of(arg_matches, "from");
-            let amount_str = arg_matches.value_of("amount").unwrap();
-            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
+            let amount = value_t_or_exit!(arg_matches, "amount", f64);
             command_deposit_wsol(
                 &config,
                 &stake_pool_address,
                 &from,
                 &token_receiver,
                 &referrer,
-                lamports,
+                amount,
             )
         }
         ("list", Some(arg_matches)) => {
