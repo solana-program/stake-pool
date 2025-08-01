@@ -56,6 +56,7 @@ use {
     spl_token_2022::{
         check_spl_token_program_account, extension::StateWithExtensions, state::Mint,
     },
+    spl_token::state::Account as TokenAccount,
     std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
 };
 
@@ -1409,54 +1410,94 @@ fn command_deposit_wsol(
     referrer_token_account: &Option<Pubkey>,
     amount: f64,
 ) -> CommandResult {
+    println!("[DEBUG] Entering command_deposit_wsol");
+    println!("[DEBUG] stake_pool_address: {:?}", stake_pool_address);
+    println!("[DEBUG] from: {:?}", from.as_ref().map(|k| k.pubkey()));
+    println!("[DEBUG] pool_token_receiver_account: {:?}", pool_token_receiver_account);
+    println!("[DEBUG] referrer_token_account: {:?}", referrer_token_account);
+    println!("[DEBUG] amount: {}", amount);
+
     if !config.no_update {
+        println!("[DEBUG] Updating stake pool");
         command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let amount = native_token::sol_to_lamports(amount);
+    println!("[DEBUG] amount in lamports: {}", amount);
 
     let from_pubkey = from
         .as_ref()
         .map_or_else(|| config.fee_payer.pubkey(), |keypair| keypair.pubkey());
-    let from_balance = config.rpc_client.get_balance(&from_pubkey)?;
+    println!("[DEBUG] from_pubkey: {:?}", from_pubkey);
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    println!("[DEBUG] stake_pool: {:?}", stake_pool);
+
+    let from_wsol_account =
+        spl_associated_token_account::get_associated_token_address(
+            &from_pubkey,
+            &spl_token::native_mint::id(),
+        );
+    println!("[DEBUG] from_wsol_account: {:?}", from_wsol_account);
+
+    let from_balance = config
+        .rpc_client
+        .get_token_account_balance(&from_wsol_account)
+        .map(|balance| balance.amount.parse::<u64>().unwrap_or(0))
+        .unwrap_or(0);
+    println!("[DEBUG] from_balance: {}", from_balance);
+
     if from_balance < amount {
+        println!("[DEBUG] Not enough wSOL to deposit into pool");
         return Err(format!(
-            "Not enough SOL to deposit into pool: {}.\nMaximum deposit amount is {} SOL.",
+            "Not enough wSOL to deposit into pool: {}.\nMaximum deposit amount is {} wSOL.",
             Sol(amount),
             Sol(from_balance)
         )
         .into());
     }
 
-    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-
     let mut instructions: Vec<Instruction> = vec![];
 
-    let user_wsol_account = Keypair::new();
-    let mut signers = vec![config.fee_payer.as_ref(), &user_wsol_account];
+    // 1. Create a new wSOL account
+    let temp_wsol_account = Keypair::new();
+    let rent = config.rpc_client.get_minimum_balance_for_rent_exemption(TokenAccount::LEN)?;
+    instructions.push(system_instruction::create_account(
+        &from_pubkey,
+        &temp_wsol_account.pubkey(),
+        rent,
+        TokenAccount::LEN as u64,
+        &spl_token::id(),
+    ));
+    let mut signers = vec![config.fee_payer.as_ref()];
     if let Some(keypair) = from.as_ref() {
         signers.push(keypair);
     }
+    signers.push(&temp_wsol_account);
 
-    let mut total_rent_free_balances: u64 = 0;
-
-    let rent = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(spl_token_2022::state::Account::LEN)?;
-
-    instructions.push(system_instruction::create_account(
-        &from_pubkey,
-        &user_wsol_account.pubkey(),
-        amount + rent,
-        spl_token_2022::state::Account::LEN as u64,
-        &stake_pool.token_program_id,
-    ));
-    instructions.push(spl_token_2022::instruction::initialize_account(
-        &stake_pool.token_program_id,
-        &user_wsol_account.pubkey(),
-        &spl_token_2022::native_mint::id(),
+    // 2. Initialize the new wSOL account
+    instructions.push(spl_token::instruction::initialize_account(
+        &spl_token::id(),
+        &temp_wsol_account.pubkey(),
+        &spl_token::native_mint::id(),                         // So111…
         &from_pubkey,
     )?);
+
+    // 3. Transfer wSOL from the user to the new account
+    instructions.push(spl_token::instruction::transfer_checked(
+        &spl_token::id(),
+        &from_wsol_account,
+        &spl_token::native_mint::id(),
+        &temp_wsol_account.pubkey(),
+        
+        &from_pubkey, // authority (signer)
+        &[], // no multisig
+        amount, // amount to transfer
+        9, // WSOL has 9 decimals
+    )?);
+
+    // 3. Deposit wSOL into the pool
+    let mut total_rent_free_balances: u64 = 0;
 
     let pool_token_receiver_account =
         pool_token_receiver_account.unwrap_or(add_associated_token_account(
@@ -1467,66 +1508,78 @@ fn command_deposit_wsol(
             &mut instructions,
             &mut total_rent_free_balances,
         ));
+    println!("[DEBUG] pool_token_receiver_account (after potential creation): {:?}", pool_token_receiver_account);
+    println!("[DEBUG] total_rent_free_balances: {}", total_rent_free_balances);
 
     let referrer_token_account = referrer_token_account.unwrap_or(pool_token_receiver_account);
+    println!("[DEBUG] referrer_token_account (final): {:?}", referrer_token_account);
 
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&config.stake_pool_program_id, stake_pool_address)
             .0;
+    println!("[DEBUG] pool_withdraw_authority: {:?}", pool_withdraw_authority);
 
-    let deposit_instruction = if let Some(deposit_authority) = config.funding_authority.as_ref() {
-        let expected_sol_deposit_authority = stake_pool.sol_deposit_authority.ok_or_else(|| {
-            "SOL deposit authority specified in arguments but stake pool has none".to_string()
-        })?;
-        signers.push(deposit_authority.as_ref());
-        if deposit_authority.pubkey() != expected_sol_deposit_authority {
-            let error = format!(
-                "Invalid deposit authority specified, expected {}, received {}",
-                expected_sol_deposit_authority,
-                deposit_authority.pubkey()
-            );
-            return Err(error.into());
-        }
+    let deposit_instruction =
+        if let Some(deposit_authority) = config.funding_authority.as_ref() {
+            println!("[DEBUG] Using deposit authority");
+            let expected_sol_deposit_authority =
+                stake_pool.sol_deposit_authority.ok_or_else(|| {
+                    "SOL deposit authority specified in arguments but stake pool has none".to_string()
+                })?;
+            println!("[DEBUG] expected_sol_deposit_authority: {:?}", expected_sol_deposit_authority);
+            signers.push(deposit_authority.as_ref());
+            if deposit_authority.pubkey() != expected_sol_deposit_authority {
+                println!("[DEBUG] Invalid deposit authority");
+                let error = format!(
+                    "Invalid deposit authority specified, expected {}, received {}",
+                    expected_sol_deposit_authority,
+                    deposit_authority.pubkey()
+                );
+                return Err(error.into());
+            }
 
-        spl_stake_pool::instruction::deposit_wsol(
-            &config.stake_pool_program_id,
-            stake_pool_address,
-            &pool_withdraw_authority,
-            &stake_pool.reserve_stake,
-            &user_wsol_account.pubkey(),
-            &from_pubkey,
-            &from_pubkey,
-            &pool_token_receiver_account,
-            &stake_pool.manager_fee_account,
-            &referrer_token_account,
-            &stake_pool.pool_mint,
-            &stake_pool.token_program_id,
-            &spl_token_2022::native_mint::id(),
-            Some(&deposit_authority.pubkey()),
-            amount,
-        )
-    } else {
-        spl_stake_pool::instruction::deposit_wsol(
-            &config.stake_pool_program_id,
-            stake_pool_address,
-            &pool_withdraw_authority,
-            &stake_pool.reserve_stake,
-            &user_wsol_account.pubkey(),
-            &from_pubkey,
-            &from_pubkey,
-            &pool_token_receiver_account,
-            &stake_pool.manager_fee_account,
-            &referrer_token_account,
-            &stake_pool.pool_mint,
-            &stake_pool.token_program_id,
-            &spl_token_2022::native_mint::id(),
-            None,
-            amount,
-        )
-    };
+            spl_stake_pool::instruction::deposit_wsol(
+                &config.stake_pool_program_id,
+                stake_pool_address,
+                &pool_withdraw_authority,
+                &stake_pool.reserve_stake,
+                &temp_wsol_account.pubkey(),
+                &from_pubkey,
+                &from_pubkey, // lamports destination
+                &pool_token_receiver_account,
+                &stake_pool.manager_fee_account,
+                &referrer_token_account,
+                &stake_pool.pool_mint,
+                &spl_token::id(),
+                &spl_token::native_mint::id(),
+                Some(&deposit_authority.pubkey()),
+                amount,
+            )
+        } else {
+            println!("[DEBUG] Not using deposit authority");
+            spl_stake_pool::instruction::deposit_wsol(
+                &config.stake_pool_program_id,
+                stake_pool_address,
+                &pool_withdraw_authority,
+                &stake_pool.reserve_stake,
+                &temp_wsol_account.pubkey(),
+                &from_pubkey,
+                &from_pubkey, // lamports destination
+                &pool_token_receiver_account,
+                &stake_pool.manager_fee_account,
+                &referrer_token_account,
+                &stake_pool.pool_mint,
+                &spl_token::id(),
+                &spl_token::native_mint::id(),
+                None,
+                amount,
+            )
+        };
+    println!("[DEBUG] deposit_instruction: {:?}", deposit_instruction);
 
     instructions.push(deposit_instruction);
 
+    println!("[DEBUG] signers: {:?}", signers.iter().map(|s| s.pubkey()).collect::<Vec<_>>());
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers_and_additional_fee(
         config,
@@ -1534,7 +1587,10 @@ fn command_deposit_wsol(
         &signers,
         total_rent_free_balances,
     )?;
+    println!("[DEBUG] transaction: {:?}", transaction);
+
     send_transaction(config, transaction)?;
+    println!("[DEBUG] Transaction sent successfully");
     Ok(())
 }
 
