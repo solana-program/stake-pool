@@ -1,5 +1,8 @@
 //! State transition types
 
+/// Seed for the session authority PDA
+pub const SESSION_AUTHORITY_SEED: &[u8] = b"session-authority";
+
 use {
     crate::{
         big_vec::BigVec, error::StakePoolError, MAX_WITHDRAWAL_FEE_INCREASE,

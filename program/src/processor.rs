@@ -1266,6 +1266,141 @@ impl Processor {
         )
     }
 
+    /// Processes [`DepositWsolWithSession`](
+    ///     crate::instruction::StakePoolInstruction::DepositWsolWithSession
+    /// ).
+    #[inline(never)]
+    fn process_deposit_wsol_with_session(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let reserve_stake_account_info = next_account_info(account_info_iter)?;
+        let source_wsol_account_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+        let destination_pool_token_account_info = next_account_info(account_info_iter)?;
+        let temporary_wsol_account_info = next_account_info(account_info_iter)?;
+        let manager_fee_account_info = next_account_info(account_info_iter)?;
+        let referrer_pool_tokens_account_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+        let wsol_mint_info = next_account_info(account_info_iter)?;
+        let session_signer_info = next_account_info(account_info_iter)?;
+        let session_token_info = next_account_info(account_info_iter)?;
+        let session_authority_pda_info = next_account_info(account_info_iter)?;
+        let fogo_sessions_program_info = next_account_info(account_info_iter)?;
+
+        fogo_sessions::cpi::check_session_auth(
+            fogo_sessions_program_info.clone(),
+            session_signer_info.clone(),
+            session_token_info.clone(),
+            owner_info.clone(),
+        )?;
+
+        let rent = Rent::get()?;
+        let account_len = spl_token::state::Account::LEN;
+
+        let (session_authority_pda, bump_seed) = Pubkey::find_program_address(
+            &[SESSION_AUTHORITY_SEED],
+            program_id,
+        );
+
+        if session_authority_pda != *session_authority_pda_info.key {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        let signers_seeds = &[SESSION_AUTHORITY_SEED, &[bump_seed]];
+
+        invoke_signed(
+            &system_instruction::create_account(
+                owner_info.key,
+                temporary_wsol_account_info.key,
+                rent.minimum_balance(account_len),
+                account_len as u64,
+                token_program_info.key,
+            ),
+            &[
+                owner_info.clone(),
+                temporary_wsol_account_info.clone(),
+                system_program_info.clone(),
+            ],
+            &[signers_seeds],
+        )?;
+
+        invoke_signed(
+            &spl_token::instruction::initialize_account(
+                token_program_info.key,
+                temporary_wsol_account_info.key,
+                wsol_mint_info.key,
+                owner_info.key,
+            )?,
+            &[
+                temporary_wsol_account_info.clone(),
+                wsol_mint_info.clone(),
+                owner_info.clone(),
+                token_program_info.clone(),
+            ],
+            &[signers_seeds],
+        )?;
+
+        invoke_signed(
+            &spl_token::instruction::transfer(
+                token_program_info.key,
+                source_wsol_account_info.key,
+                temporary_wsol_account_info.key,
+                owner_info.key,
+                &[],
+                amount,
+            )?,
+            &[
+                source_wsol_account_info.clone(),
+                temporary_wsol_account_info.clone(),
+                owner_info.clone(),
+                token_program_info.clone(),
+            ],
+            &[signers_seeds],
+        )?;
+
+        invoke_signed(
+            &spl_token::instruction::close_account(
+                token_program_info.key,
+                temporary_wsol_account_info.key,
+                owner_info.key,
+                owner_info.key,
+                &[],
+            )?,
+            &[
+                temporary_wsol_account_info.clone(),
+                owner_info.clone(),
+                owner_info.clone(),
+                token_program_info.clone(),
+            ],
+            &[signers_seeds],
+        )?;
+
+        Self::process_deposit_sol(
+            program_id,
+            &[
+                stake_pool_info.clone(),
+                withdraw_authority_info.clone(),
+                reserve_stake_account_info.clone(),
+                owner_info.clone(),
+                destination_pool_token_account_info.clone(),
+                manager_fee_account_info.clone(),
+                referrer_pool_tokens_account_info.clone(),
+                pool_mint_info.clone(),
+                system_program_info.clone(),
+                token_program_info.clone(),
+            ],
+            amount,
+            None,
+        )
+    }
+
     /// Processes `DecreaseValidatorStake` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_decrease_validator_stake(

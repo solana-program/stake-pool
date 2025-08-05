@@ -756,6 +756,31 @@ pub enum StakePoolInstruction {
     ///  12. `[]` Wrapped SOL mint
     ///  13. `[s]` (Optional) Stake pool sol deposit authority
     DepositWsol(u64),
+
+    ///   Deposit wrapped SOL via a Fogo session.
+    ///   The WSOL account is closed and its lamports used for the deposit.
+    ///
+    ///   0. `[w]` Stake Pool
+    ///   1. `[]` Stake Pool Withdraw Authority
+    ///   2. `[w]` Reserve Stake Account
+    ///   3. `[w]` User's Source wSOL Account
+    ///   4. `[w]` Owner
+    ///   5. `[w]` User's Destination Pool Token Account
+    ///   6. `[w]` Temporary wSOL Account
+    ///   7. `[w]` Manager Fee Account
+    ///   8. `[w]` Referrer Fee Account
+    ///   9. `[w]` Pool Token Mint
+    ///  10. `[]` System Program
+    ///  11. `[]` Token Program
+    ///  12. `[]` Wrapped SOL Mint
+    ///  13. `[s]` Session Signer
+    ///  14. `[]` Session Token
+    ///  15. `[]` Session Authority PDA
+    ///  16. `[]` Fogo Sessions Program
+    DepositWsolWithSession {
+        /// amount of lamports to deposit
+        amount: u64,
+    },
 }
 
 /// Creates an `Initialize` instruction.
@@ -1992,6 +2017,54 @@ pub fn deposit_stake_with_authority(
         token_program_id,
         None,
     )
+}
+
+/// Creates a `DepositWsolWithSession` instruction.
+pub fn deposit_wsol_with_session(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    source_wsol_account: &Pubkey,
+    owner: &Pubkey,
+    destination_pool_token_account: &Pubkey,
+    temporary_wsol_account: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    wsol_mint: &Pubkey,
+    session_signer: &Pubkey,
+    session_token: &Pubkey,
+    session_authority_pda: &Pubkey,
+    fogo_sessions_program: &Pubkey,
+    amount: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*source_wsol_account, false),
+        AccountMeta::new(*owner, false),
+        AccountMeta::new(*destination_pool_token_account, false),
+        AccountMeta::new(*temporary_wsol_account, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*wsol_mint, false),
+        AccountMeta::new_readonly(*session_signer, true),
+        AccountMeta::new_readonly(*session_token, false),
+        AccountMeta::new_readonly(*session_authority_pda, false),
+        AccountMeta::new_readonly(*fogo_sessions_program, false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession { amount }).unwrap(),
+    }
 }
 
 /// Creates instructions required to deposit into a stake pool with slippage,
