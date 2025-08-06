@@ -1350,6 +1350,13 @@ impl Processor {
         // Extra check in case the account already exists, skip if it does
         if transient_wsol_ai.data_is_empty() {
 
+            // Verify it's a valid token account with correct mint and owner
+            let token_account = spl_token::state::Account::unpack(&transient_wsol_ai.data.borrow())?;
+            if token_account.mint != *wsol_mint_ai.key || 
+            token_account.owner != *program_signer_ai.key {
+                return Err(ProgramError::InvalidAccountData);
+            }
+
             // ──────────────────────────────────────────────────────────────────────
             // a) Create the account – owner = SPL Token program
             // ──────────────────────────────────────────────────────────────────────
