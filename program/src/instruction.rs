@@ -779,7 +779,7 @@ pub enum StakePoolInstruction {
     ///  16. `[]` Fogo Sessions Program
     DepositWsolWithSession {
         /// amount of lamports to deposit
-        amount: u64,
+        lamports: u64,
     },
 }
 
@@ -2019,54 +2019,6 @@ pub fn deposit_stake_with_authority(
     )
 }
 
-/// Creates a `DepositWsolWithSession` instruction.
-pub fn deposit_wsol_with_session(
-    program_id: &Pubkey,
-    stake_pool: &Pubkey,
-    stake_pool_withdraw_authority: &Pubkey,
-    reserve_stake_account: &Pubkey,
-    source_wsol_account: &Pubkey,
-    owner: &Pubkey,
-    destination_pool_token_account: &Pubkey,
-    temporary_wsol_account: &Pubkey,
-    manager_fee_account: &Pubkey,
-    referrer_pool_tokens_account: &Pubkey,
-    pool_mint: &Pubkey,
-    token_program_id: &Pubkey,
-    wsol_mint: &Pubkey,
-    session_signer: &Pubkey,
-    session_token: &Pubkey,
-    session_authority_pda: &Pubkey,
-    fogo_sessions_program: &Pubkey,
-    amount: u64,
-) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new(*reserve_stake_account, false),
-        AccountMeta::new(*source_wsol_account, false),
-        AccountMeta::new(*owner, false),
-        AccountMeta::new(*destination_pool_token_account, false),
-        AccountMeta::new(*temporary_wsol_account, false),
-        AccountMeta::new(*manager_fee_account, false),
-        AccountMeta::new(*referrer_pool_tokens_account, false),
-        AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*wsol_mint, false),
-        AccountMeta::new_readonly(*session_signer, true),
-        AccountMeta::new_readonly(*session_token, false),
-        AccountMeta::new_readonly(*session_authority_pda, false),
-        AccountMeta::new_readonly(*fogo_sessions_program, false),
-    ];
-
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession { amount }).unwrap(),
-    }
-}
-
 /// Creates instructions required to deposit into a stake pool with slippage,
 /// given a stake account owned by the user. The difference with `deposit()` is
 /// that a deposit authority must sign this instruction, which is required for
@@ -2332,6 +2284,66 @@ pub fn deposit_wsol(
         data: borsh::to_vec(&StakePoolInstruction::DepositWsol(lamports_in)).unwrap(),
     }
 }
+
+/// Creates a `DepositWsolWithSession` instruction.
+pub fn deposit_wsol_with_session(
+    program_id: &Pubkey,
+    signer_or_session: &Pubkey,
+    program_signer: &Pubkey,
+    user_wsol_account: &Pubkey,
+    transient_wsol_account: &Pubkey,
+    wsol_mint: &Pubkey,
+    stake_pool: &Pubkey,
+    sol_deposit_authority: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    system_program_id: &Pubkey,
+    stake_pool_program_id: &Pubkey,
+    stake_program_id: &Pubkey,
+    clock_sysvar: &Pubkey,
+    stake_history_sysvar: &Pubkey,
+    rent_sysvar: &Pubkey,
+    lamports_in: u64,
+) -> Instruction {
+    let accounts = vec![
+        /* 0  */ AccountMeta::new(*signer_or_session, /*is_signer*/ true),
+        /* 1  */ AccountMeta::new(*program_signer, false),
+        /* 2  */ AccountMeta::new(*user_wsol_account,  false),
+        /* 3  */ AccountMeta::new(*transient_wsol_account, false),
+        /* 4  */ AccountMeta::new_readonly(*wsol_mint, false),
+
+        /* --- exact order expected by stake-pool CPI ------------------------ */
+        /* 4  */ AccountMeta::new(*stake_pool,                   false),
+        /* 5  */ AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        /* 6  */ AccountMeta::new_readonly(*sol_deposit_authority,          false),
+        /* 7  */ AccountMeta::new(*reserve_stake_account,        false),
+        /* 10 */ AccountMeta::new(*pool_tokens_to,      false),
+        /* 11 */ AccountMeta::new(*manager_fee_account,          false),
+        /* 12 */ AccountMeta::new(*referrer_pool_tokens_account, false),
+        /* 13 */ AccountMeta::new(*pool_mint,                    false),
+        /* 14 */ AccountMeta::new_readonly(*token_program_id,    false),
+
+        /* ───── Programs & sysvars ───── */
+        /* 15 */ AccountMeta::new_readonly(*system_program_id,   false),
+        /* 16 */ AccountMeta::new_readonly(*stake_pool_program_id, false),
+        /* 17 */ AccountMeta::new_readonly(*stake_program_id, false),
+        /* 18 */ AccountMeta::new_readonly(*clock_sysvar, false),
+        /* 19 */ AccountMeta::new_readonly(*stake_history_sysvar, false),
+        /* 20 */ AccountMeta::new_readonly(*rent_sysvar, false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&StakePoolInstruction::DepositWsolWithSession { lamports: lamports_in }).unwrap(),
+    }
+}
+
 
 fn withdraw_stake_internal(
     program_id: &Pubkey,
