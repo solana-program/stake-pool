@@ -14,6 +14,8 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAccount,
   getAssociatedTokenAddressSync,
+  NATIVE_MINT,
+  TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import {
   ValidatorAccount,
@@ -44,6 +46,7 @@ import {
   MINIMUM_ACTIVE_STAKE,
   STAKE_POOL_PROGRAM_ID,
   DEVNET_STAKE_POOL_PROGRAM_ID,
+  FOGO_TESTNET_STAKE_POOL_PROGRAM_ID,
 } from './constants';
 import { create } from 'superstruct';
 import BN from 'bn.js';
@@ -81,6 +84,8 @@ export interface StakePoolAccounts {
 export function getStakePoolProgramId(rpcEndpoint: string): PublicKey {
   if (rpcEndpoint.includes('devnet')) {
     return DEVNET_STAKE_POOL_PROGRAM_ID;
+  } else if (rpcEndpoint.includes('testnet.fogo')) {
+    return FOGO_TESTNET_STAKE_POOL_PROGRAM_ID;
   } else {
     return STAKE_POOL_PROGRAM_ID;
   }
@@ -346,6 +351,102 @@ export async function depositSol(
   return {
     instructions,
     signers,
+  };
+}
+
+export async function depositWsolWithSession(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  signerOrSession: PublicKey,  // Either the session public key or user's wallet
+  userWallet: PublicKey,        // The actual user's wallet (extracted from session or same as signer)
+  lamports: number,
+  destinationTokenAccount?: PublicKey,
+  referrerTokenAccount?: PublicKey,
+  depositAuthority?: PublicKey,
+) {
+
+  // Get user's WSOL ATA
+  const userWsolAccount = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    userWallet
+  );
+
+  // Check WSOL balance
+  const tokenAccountInfo = await connection.getTokenAccountBalance(userWsolAccount, 'confirmed');
+  const wsolBalance = tokenAccountInfo ? parseInt(tokenAccountInfo.value.amount) : 0;
+  
+  if (wsolBalance < lamports) {
+    throw new Error(
+      `Not enough WSOL to deposit into pool. Maximum deposit amount is ${lamportsToSol(
+        wsolBalance,
+      )} WSOL.`,
+    );
+  }
+
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress);
+  const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint);
+  const stakePool = stakePoolAccount.account.data;
+
+  const instructions: TransactionInstruction[] = [];
+
+  // Derive PDAs
+  const [programSigner] = PublicKey.findProgramAddressSync(
+    [Buffer.from('fogo_session_program_signer')],  // PROGRAM_SIGNER_SEED: https://github.com/fogo-foundation/fogo-sessions/blob/8b00bdfb214c0f797d8dd22fc24f813801a8a191/packages/sessions-sdk-rs/src/token/mod.rs#L5
+    stakePoolProgramId
+  );
+
+  const [transientWsolPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('transient_wsol'), userWallet.toBuffer()],
+    stakePoolProgramId
+  );
+
+  // Create destination token account if not specified
+  if (!destinationTokenAccount) {
+    const associatedAddress = getAssociatedTokenAddressSync(
+      stakePool.poolMint, 
+      userWallet  // Pool tokens go to the actual user, not the session
+    );
+    instructions.push(
+      createAssociatedTokenAccountIdempotentInstruction(
+        signerOrSession,  // Payer (could be session or user)
+        associatedAddress,
+        userWallet,       // Owner is always the actual user
+        stakePool.poolMint,
+      ),
+    );
+    destinationTokenAccount = associatedAddress;
+  }
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    stakePoolProgramId,
+    stakePoolAddress,
+  );
+
+  // Build the deposit_wsol_with_session instruction
+  instructions.push(
+    StakePoolInstruction.buildDepositWsolWithSessionInstruction({
+      programId: stakePoolProgramId,
+      signerOrSession,
+      programSigner,
+      userWsolAccount,
+      transientWsolPda,
+      wsolMint: NATIVE_MINT,
+      stakePool: stakePoolAddress,
+      withdrawAuthority,
+      solDepositAuthority: depositAuthority,
+      reserveStake: stakePool.reserveStake,
+      destinationPoolAccount: destinationTokenAccount,
+      managerFeeAccount: stakePool.managerFeeAccount,
+      referralPoolAccount: referrerTokenAccount ?? destinationTokenAccount,
+      poolMint: stakePool.poolMint,
+      tokenProgramId: TOKEN_PROGRAM_ID,
+      lamports,
+    }),
+  );
+
+  return {
+    instructions,
+    signers: [],
   };
 }
 
