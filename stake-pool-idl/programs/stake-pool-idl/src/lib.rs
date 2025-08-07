@@ -19,42 +19,44 @@ pub mod stake_pool_idl {
         Ok(())
     }
 
-    /// Deposit SOL into the stake pool in exchange for pool tokens
-    pub fn deposit_sol(_ctx: Context<DepositSol>, _lamports: u64) -> Result<()> {
-        Ok(())
-    }
-
-    /// Deposit wrapped SOL into the stake pool in exchange for pool tokens
-    pub fn deposit_wsol(_ctx: Context<DepositWsol>, _lamports: u64) -> Result<()> {
-        Ok(())
-    }
-
-    /// Withdraw SOL from the stake pool by burning pool tokens
-    pub fn withdraw_sol(_ctx: Context<WithdrawSol>, _pool_tokens: u64) -> Result<()> {
-        Ok(())
-    }
-
-    /// Deposit stake account into the pool in exchange for pool tokens
-    pub fn deposit_stake(_ctx: Context<DepositStake>) -> Result<()> {
-        Ok(())
-    }
-
-    /// Withdraw stake account from the pool by burning pool tokens
-    pub fn withdraw_stake(_ctx: Context<WithdrawStake>, _pool_tokens: u64) -> Result<()> {
-        Ok(())
-    }
-
-    /// Add a new validator to the pool (staker only)
+    /// Add validator to pool with seed
     pub fn add_validator_to_pool(_ctx: Context<AddValidatorToPool>, _seed: u32) -> Result<()> {
         Ok(())
     }
 
-    /// Remove validator from the pool (staker only)
+    /// Remove validator from pool
     pub fn remove_validator_from_pool(_ctx: Context<RemoveValidatorFromPool>) -> Result<()> {
         Ok(())
     }
 
-    /// Update the pool's balance and validator list balances
+    /// Decrease validator stake (deprecated)
+    pub fn decrease_validator_stake(
+        _ctx: Context<DecreaseValidatorStake>,
+        _lamports: u64,
+        _transient_stake_seed: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Increase validator stake
+    pub fn increase_validator_stake(
+        _ctx: Context<IncreaseValidatorStake>,
+        _lamports: u64,
+        _transient_stake_seed: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Set preferred validator
+    pub fn set_preferred_validator(
+        _ctx: Context<SetPreferredValidator>,
+        _validator_type: PreferredValidatorType,
+        _validator_vote_address: Option<Pubkey>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Update validator list balance
     pub fn update_validator_list_balance(
         _ctx: Context<UpdateValidatorListBalance>,
         _start_index: u32,
@@ -63,18 +65,166 @@ pub mod stake_pool_idl {
         Ok(())
     }
 
-    /// Set manager authority (manager only)
+    /// Update stake pool balance
+    pub fn update_stake_pool_balance(_ctx: Context<UpdateStakePoolBalance>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Cleanup removed validator entries
+    pub fn cleanup_removed_validator_entries(
+        _ctx: Context<CleanupRemovedValidatorEntries>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Deposit stake account
+    pub fn deposit_stake(_ctx: Context<DepositStake>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Withdraw stake account
+    pub fn withdraw_stake(_ctx: Context<WithdrawStake>, _pool_tokens: u64) -> Result<()> {
+        Ok(())
+    }
+
+    /// Set manager authority
     pub fn set_manager(_ctx: Context<SetManager>) -> Result<()> {
         Ok(())
     }
 
-    /// Set staker authority (manager only)
+    /// Set fee
+    pub fn set_fee(_ctx: Context<SetFee>, _fee_type: FeeType) -> Result<()> {
+        Ok(())
+    }
+
+    /// Set staker authority
     pub fn set_staker(_ctx: Context<SetStaker>) -> Result<()> {
         Ok(())
     }
 
-    /// Set fee (manager only)
-    pub fn set_fee(_ctx: Context<SetFee>, _fee_type: FeeType, _fee: Fee) -> Result<()> {
+    /// Deposit SOL
+    pub fn deposit_sol(_ctx: Context<DepositSol>, _lamports: u64) -> Result<()> {
+        Ok(())
+    }
+
+    /// Set funding authority
+    pub fn set_funding_authority(
+        _ctx: Context<SetFundingAuthority>,
+        _funding_type: FundingType,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Withdraw SOL
+    pub fn withdraw_sol(_ctx: Context<WithdrawSol>, _pool_tokens: u64) -> Result<()> {
+        Ok(())
+    }
+
+    /// Create token metadata
+    pub fn create_token_metadata(
+        _ctx: Context<CreateTokenMetadata>,
+        _name: String,
+        _symbol: String,
+        _uri: String,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Update token metadata
+    pub fn update_token_metadata(
+        _ctx: Context<UpdateTokenMetadata>,
+        _name: String,
+        _symbol: String,
+        _uri: String,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Increase additional validator stake
+    pub fn increase_additional_validator_stake(
+        _ctx: Context<IncreaseAdditionalValidatorStake>,
+        _lamports: u64,
+        _transient_stake_seed: u64,
+        _ephemeral_stake_seed: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Decrease additional validator stake
+    pub fn decrease_additional_validator_stake(
+        _ctx: Context<DecreaseAdditionalValidatorStake>,
+        _lamports: u64,
+        _transient_stake_seed: u64,
+        _ephemeral_stake_seed: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Decrease validator stake with reserve
+    pub fn decrease_validator_stake_with_reserve(
+        _ctx: Context<DecreaseValidatorStakeWithReserve>,
+        _lamports: u64,
+        _transient_stake_seed: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Redelegate (deprecated)
+    pub fn redelegate(
+        _ctx: Context<Redelegate>,
+        _lamports: u64,
+        _source_transient_stake_seed: u64,
+        _ephemeral_stake_seed: u64,
+        _destination_transient_stake_seed: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Deposit stake with slippage protection
+    pub fn deposit_stake_with_slippage(
+        _ctx: Context<DepositStakeWithSlippage>,
+        _minimum_pool_tokens_out: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Withdraw stake with slippage protection
+    pub fn withdraw_stake_with_slippage(
+        _ctx: Context<WithdrawStakeWithSlippage>,
+        _pool_tokens_in: u64,
+        _minimum_lamports_out: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Deposit SOL with slippage protection
+    pub fn deposit_sol_with_slippage(
+        _ctx: Context<DepositSolWithSlippage>,
+        _lamports_in: u64,
+        _minimum_pool_tokens_out: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Withdraw SOL with slippage protection
+    pub fn withdraw_sol_with_slippage(
+        _ctx: Context<WithdrawSolWithSlippage>,
+        _pool_tokens_in: u64,
+        _minimum_lamports_out: u64,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Deposit wrapped SOL
+    pub fn deposit_wsol(_ctx: Context<DepositWsol>, _lamports: u64) -> Result<()> {
+        Ok(())
+    }
+
+    /// Deposit wrapped SOL with session
+    pub fn deposit_wsol_with_session(
+        _ctx: Context<DepositWsolWithSession>,
+        _lamports: u64,
+    ) -> Result<()> {
         Ok(())
     }
 }
@@ -191,6 +341,49 @@ pub struct DepositWsol<'info> {
     pub wsol_mint: Account<'info, Mint>,
     /// CHECK: Optional deposit authority
     pub sol_deposit_authority: Option<AccountInfo<'info>>,
+}
+
+#[derive(Accounts)]
+pub struct DepositWsolWithSession<'info> {
+    /// CHECK: Signer or session
+    pub signer_or_session: Signer<'info>,
+    /// CHECK: Program signer
+    pub program_signer: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: User WSOL account
+    pub user_wsol_account: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Transient WSOL account
+    pub transient_wsol_account: AccountInfo<'info>,
+    /// CHECK: WSOL mint
+    pub wsol_mint: Account<'info, Mint>,
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    /// CHECK: Stake pool withdraw authority
+    pub stake_pool_withdraw_authority: AccountInfo<'info>,
+    /// CHECK: SOL deposit authority
+    pub sol_deposit_authority: Option<AccountInfo<'info>>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake_account: AccountInfo<'info>,
+    #[account(mut)]
+    pub destination_pool_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub manager_fee_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub referrer_pool_tokens_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_mint: Account<'info, Mint>,
+    /// CHECK: System program
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK: Sessions program
+    pub sessions_program: AccountInfo<'info>,
+    /// CHECK: Session token
+    pub session_token: AccountInfo<'info>,
+    /// CHECK: Session authority
+    pub session_authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -368,6 +561,410 @@ pub struct SetFee<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
+// Additional account structures for missing instructions
+
+#[derive(Accounts)]
+pub struct DecreaseValidatorStake<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub staker: Signer<'info>,
+    /// CHECK: Withdraw authority
+    pub withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator stake account
+    pub validator_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Transient stake account
+    pub transient_stake: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct IncreaseValidatorStake<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub staker: Signer<'info>,
+    /// CHECK: Withdraw authority
+    pub withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Transient stake account
+    pub transient_stake: AccountInfo<'info>,
+    /// CHECK: Validator stake account
+    pub validator_stake: AccountInfo<'info>,
+    /// CHECK: Validator vote account
+    pub validator_vote: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub rent: Sysvar<'info, Rent>,
+    /// CHECK: Stake history sysvar
+    pub stake_history: AccountInfo<'info>,
+    /// CHECK: Stake config sysvar
+    pub stake_config: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetPreferredValidator<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub staker: Signer<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateStakePoolBalance<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    /// CHECK: Withdraw authority
+    pub withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    #[account(mut)]
+    pub manager_fee_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_mint: Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
+    pub clock: Sysvar<'info, Clock>,
+}
+
+#[derive(Accounts)]
+pub struct CleanupRemovedValidatorEntries<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetFundingAuthority<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub manager: Signer<'info>,
+    /// CHECK: New funding authority
+    pub new_authority: Option<AccountInfo<'info>>,
+}
+
+#[derive(Accounts)]
+pub struct CreateTokenMetadata<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub manager: Signer<'info>,
+    #[account(mut)]
+    pub pool_mint: Account<'info, Mint>,
+    #[account(mut)]
+    /// CHECK: Pool token metadata
+    pub pool_token_metadata: AccountInfo<'info>,
+    /// CHECK: Metadata program
+    pub token_metadata_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateTokenMetadata<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub manager: Signer<'info>,
+    #[account(mut)]
+    /// CHECK: Pool token metadata
+    pub pool_token_metadata: AccountInfo<'info>,
+    /// CHECK: Metadata program
+    pub token_metadata_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct IncreaseAdditionalValidatorStake<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub staker: Signer<'info>,
+    /// CHECK: Withdraw authority
+    pub withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Transient stake account
+    pub transient_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Ephemeral stake account
+    pub ephemeral_stake: AccountInfo<'info>,
+    /// CHECK: Validator stake account
+    pub validator_stake: AccountInfo<'info>,
+    /// CHECK: Validator vote account
+    pub validator_vote: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub rent: Sysvar<'info, Rent>,
+    /// CHECK: Stake history sysvar
+    pub stake_history: AccountInfo<'info>,
+    /// CHECK: Stake config sysvar
+    pub stake_config: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct DecreaseAdditionalValidatorStake<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub staker: Signer<'info>,
+    /// CHECK: Withdraw authority
+    pub withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator stake account
+    pub validator_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Transient stake account
+    pub transient_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Ephemeral stake account
+    pub ephemeral_stake: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub rent: Sysvar<'info, Rent>,
+    /// CHECK: Stake history sysvar
+    pub stake_history: AccountInfo<'info>,
+    /// CHECK: Stake config sysvar
+    pub stake_config: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct DecreaseValidatorStakeWithReserve<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub staker: Signer<'info>,
+    /// CHECK: Withdraw authority
+    pub withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator stake account
+    pub validator_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Transient stake account
+    pub transient_stake: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub rent: Sysvar<'info, Rent>,
+    /// CHECK: Stake history sysvar
+    pub stake_history: AccountInfo<'info>,
+    /// CHECK: Stake config sysvar
+    pub stake_config: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct Redelegate<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    pub staker: Signer<'info>,
+    /// CHECK: Withdraw authority
+    pub withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Source validator stake account
+    pub source_validator_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Source transient stake account
+    pub source_transient_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Ephemeral stake account
+    pub ephemeral_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Destination transient stake account
+    pub destination_transient_stake: AccountInfo<'info>,
+    /// CHECK: Destination validator stake account
+    pub destination_validator_stake: AccountInfo<'info>,
+    /// CHECK: Destination validator vote account
+    pub destination_validator_vote: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub rent: Sysvar<'info, Rent>,
+    /// CHECK: Stake history sysvar
+    pub stake_history: AccountInfo<'info>,
+    /// CHECK: Stake config sysvar
+    pub stake_config: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct DepositStakeWithSlippage<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    /// CHECK: Deposit authority
+    pub deposit_authority: AccountInfo<'info>,
+    /// CHECK: Withdraw authority
+    pub stake_pool_withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Deposit stake account
+    pub deposit_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator stake account
+    pub validator_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    #[account(mut)]
+    pub destination_pool_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub manager_fee_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub referrer_pool_tokens_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_mint: Account<'info, Mint>,
+    /// CHECK: Clock sysvar
+    pub clock: Sysvar<'info, Clock>,
+    /// CHECK: Stake history sysvar
+    pub stake_history: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawStakeWithSlippage<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator list
+    pub validator_list: AccountInfo<'info>,
+    /// CHECK: Withdraw authority
+    pub stake_pool_withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Validator stake account
+    pub validator_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Destination stake account
+    pub destination_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Destination stake account authority
+    pub destination_stake_authority: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Source pool account
+    pub source_pool_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub manager_fee_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_mint: Account<'info, Mint>,
+    /// CHECK: Clock sysvar
+    pub clock: Sysvar<'info, Clock>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct DepositSolWithSlippage<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    /// CHECK: Stake pool withdraw authority
+    pub stake_pool_withdraw_authority: AccountInfo<'info>,
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    pub funding_account: Signer<'info>,
+    #[account(mut)]
+    pub destination: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub manager_fee_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub referrer_pool_tokens_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_mint: Account<'info, Mint>,
+    /// CHECK: System program
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK: Optional deposit authority
+    pub sol_deposit_authority: Option<AccountInfo<'info>>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawSolWithSlippage<'info> {
+    #[account(mut)]
+    /// CHECK: Stake pool
+    pub stake_pool: AccountInfo<'info>,
+    /// CHECK: Stake pool withdraw authority
+    pub stake_pool_withdraw_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub source: Account<'info, TokenAccount>,
+    #[account(mut)]
+    /// CHECK: Reserve stake account
+    pub reserve_stake: AccountInfo<'info>,
+    #[account(mut)]
+    /// CHECK: Destination lamports account
+    pub destination: AccountInfo<'info>,
+    #[account(mut)]
+    pub manager_fee_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub pool_mint: Account<'info, Mint>,
+    /// CHECK: Clock sysvar
+    pub clock: Sysvar<'info, Clock>,
+    /// CHECK: Stake history sysvar
+    pub stake_history: AccountInfo<'info>,
+    /// CHECK: Stake program
+    pub stake_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK: Optional withdraw authority
+    pub sol_withdraw_authority: Option<AccountInfo<'info>>,
+}
+
 // Data structures
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub struct Fee {
@@ -417,16 +1014,19 @@ pub struct StakePool {
     pub last_update_epoch: u64,
     pub lockup: Lockup,
     pub epoch_fee: Fee,
+    pub next_epoch_fee: FutureEpoch<Fee>,
     pub preferred_deposit_validator_vote_address: Option<Pubkey>,
     pub preferred_withdraw_validator_vote_address: Option<Pubkey>,
     pub stake_deposit_fee: Fee,
     pub stake_withdrawal_fee: Fee,
+    pub next_stake_withdrawal_fee: FutureEpoch<Fee>,
     pub stake_referral_fee: u8,
     pub sol_deposit_authority: Option<Pubkey>,
     pub sol_deposit_fee: Fee,
     pub sol_referral_fee: u8,
     pub sol_withdraw_authority: Option<Pubkey>,
     pub sol_withdrawal_fee: Fee,
+    pub next_sol_withdrawal_fee: FutureEpoch<Fee>,
     pub last_epoch_pool_token_supply: u64,
     pub last_epoch_total_lamports: u64,
 }
@@ -448,4 +1048,40 @@ pub enum StakeStatus {
     Active,
     DeactivatingTransient,
     ReadyForRemoval,
+    DeactivatingValidator,
+    DeactivatingAll,
+}
+
+// Additional enums and types
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub enum PreferredValidatorType {
+    Deposit,
+    Withdraw,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub enum FundingType {
+    StakeDeposit,
+    SolDeposit,
+    SolWithdraw,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub enum FutureEpoch<T> {
+    None,
+    One(T),
+    Two(T),
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct ValidatorList {
+    pub header: ValidatorListHeader,
+    pub validators: Vec<ValidatorStakeInfo>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct ValidatorListHeader {
+    pub account_type: AccountType,
+    pub max_validators: u32,
 }
