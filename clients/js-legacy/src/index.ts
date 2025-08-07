@@ -363,6 +363,7 @@ export async function depositWsolWithSession(
   destinationTokenAccount?: PublicKey,
   referrerTokenAccount?: PublicKey,
   depositAuthority?: PublicKey,
+  paymaster?: PublicKey,
 ) {
 
   // Get user's WSOL ATA
@@ -408,7 +409,7 @@ export async function depositWsolWithSession(
     );
     instructions.push(
       createAssociatedTokenAccountIdempotentInstruction(
-        signerOrSession,  // Payer (could be session or user)
+        paymaster ?? signerOrSession,  // Payer (could be session or user)
         associatedAddress,
         userWallet,       // Owner is always the actual user
         stakePool.poolMint,
