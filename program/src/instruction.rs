@@ -2294,8 +2294,8 @@ pub fn deposit_wsol_with_session(
     transient_wsol_account: &Pubkey,
     wsol_mint: &Pubkey,
     stake_pool: &Pubkey,
-    sol_deposit_authority: &Pubkey,
     stake_pool_withdraw_authority: &Pubkey,
+    sol_deposit_authority: Option<&Pubkey>,
     reserve_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
     manager_fee_account: &Pubkey,
@@ -2303,16 +2303,16 @@ pub fn deposit_wsol_with_session(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     system_program_id: &Pubkey,
-    stake_pool_program_id: &Pubkey,
-    stake_program_id: &Pubkey,
-    clock_sysvar: &Pubkey,
-    stake_history_sysvar: &Pubkey,
-    rent_sysvar: &Pubkey,
+    // stake_pool_program_id: &Pubkey,
+    // stake_program_id: &Pubkey,
+    // clock_sysvar: &Pubkey,
+    // stake_history_sysvar: &Pubkey,
+    // rent_sysvar: &Pubkey,
     lamports_in: u64,
 ) -> Instruction {
-    let accounts = vec![
+    let mut accounts = vec![
         /* 0  */ AccountMeta::new(*signer_or_session, /*is_signer*/ true),
-        /* 1  */ AccountMeta::new(*program_signer, false),
+        /* 1  */ AccountMeta::new(*program_signer, true),
         /* 2  */ AccountMeta::new(*user_wsol_account,  false),
         /* 3  */ AccountMeta::new(*transient_wsol_account, false),
         /* 4  */ AccountMeta::new_readonly(*wsol_mint, false),
@@ -2320,7 +2320,6 @@ pub fn deposit_wsol_with_session(
         /* --- exact order expected by stake-pool CPI ------------------------ */
         /* 4  */ AccountMeta::new(*stake_pool,                   false),
         /* 5  */ AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        /* 6  */ AccountMeta::new_readonly(*sol_deposit_authority,          false),
         /* 7  */ AccountMeta::new(*reserve_stake_account,        false),
         /* 10 */ AccountMeta::new(*pool_tokens_to,      false),
         /* 11 */ AccountMeta::new(*manager_fee_account,          false),
@@ -2328,14 +2327,18 @@ pub fn deposit_wsol_with_session(
         /* 13 */ AccountMeta::new(*pool_mint,                    false),
         /* 14 */ AccountMeta::new_readonly(*token_program_id,    false),
 
-        /* ───── Programs & sysvars ───── */
+        // /* ───── Programs & sysvars ───── */
         /* 15 */ AccountMeta::new_readonly(*system_program_id,   false),
-        /* 16 */ AccountMeta::new_readonly(*stake_pool_program_id, false),
-        /* 17 */ AccountMeta::new_readonly(*stake_program_id, false),
-        /* 18 */ AccountMeta::new_readonly(*clock_sysvar, false),
-        /* 19 */ AccountMeta::new_readonly(*stake_history_sysvar, false),
-        /* 20 */ AccountMeta::new_readonly(*rent_sysvar, false),
+        // /* 16 */ AccountMeta::new_readonly(*stake_pool_program_id, false),
+        // /* 17 */ AccountMeta::new_readonly(*stake_program_id, false),
+        // /* 18 */ AccountMeta::new_readonly(*clock_sysvar, false),
+        // /* 19 */ AccountMeta::new_readonly(*stake_history_sysvar, false),
+        // /* 20 */ AccountMeta::new_readonly(*rent_sysvar, false),
     ];
+
+    if let Some(auth) = sol_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(*auth, true));
+    }
 
     Instruction {
         program_id: *program_id,

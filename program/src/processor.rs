@@ -45,9 +45,9 @@ use {
     spl_token_2022::{
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
-        native_mint,
         state::Mint,
     },
+    spl_token::native_mint,
     spl_token::instruction as token_ix,
     std::num::NonZeroU32,
     spl_associated_token_account::get_associated_token_address,
@@ -1229,7 +1229,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let wsol_account = spl_token_2022::state::Account::unpack(&from_wsol_info.data.borrow())?;
-        if wsol_account.mint != *wsol_mint_info.key || *wsol_mint_info.key != spl_token::native_mint::id() {
+        if wsol_account.mint != *wsol_mint_info.key || *wsol_mint_info.key != native_mint::id() {
             return Err(StakePoolError::WrongAccountMint.into());
         }
         if wsol_account.owner != *user_authority_info.key {
@@ -1294,7 +1294,6 @@ impl Processor {
         let wsol_mint_ai                = next_account_info(&mut ai)?; // read-only
         let stake_pool_ai               = next_account_info(&mut ai)?; // writable
         let stake_pool_withdraw_auth_ai = next_account_info(&mut ai)?; // read-only
-        let sol_deposit_auth_ai         = next_account_info(&mut ai)?; // read-only
         let reserve_stake_ai            = next_account_info(&mut ai)?; // writable
         let pool_tokens_to_ai           = next_account_info(&mut ai)?; // writable
         let manager_fee_ai              = next_account_info(&mut ai)?; // writable
@@ -1302,11 +1301,12 @@ impl Processor {
         let pool_mint_ai                = next_account_info(&mut ai)?; // writable
         let token_program_ai            = next_account_info(&mut ai)?; // read-only
         let system_program_ai           = next_account_info(&mut ai)?; // read-only
-        let stake_pool_program_ai       = next_account_info(&mut ai)?; // read-only
-        let stake_program_ai            = next_account_info(&mut ai)?; // read-only
-        let clock_sysvar_ai             = next_account_info(&mut ai)?; // read-only
-        let stake_history_sysvar_ai     = next_account_info(&mut ai)?; // read-only
-        let rent_sysvar_ai              = next_account_info(&mut ai)?; // read-only
+        let sol_deposit_auth_ai         = ai.next(); // read-only
+        // let stake_pool_program_ai       = next_account_info(&mut ai)?; // read-only
+        // let stake_program_ai            = next_account_info(&mut ai)?; // read-only
+        // let clock_sysvar_ai             = next_account_info(&mut ai)?; // read-only
+        // let stake_history_sysvar_ai     = next_account_info(&mut ai)?; // read-only
+        // let rent_sysvar_ai              = next_account_info(&mut ai)?; // read-only
     
 
         // ──────────────────────────────────────────────────────────────────────
@@ -1315,6 +1315,8 @@ impl Processor {
         
         // Check that the WSOL mint is the native mint (So11111111111111111111111111111111111111112)
         if *wsol_mint_ai.key != native_mint::id() {
+            msg!("WSOL mint: {:?}", wsol_mint_ai.key);
+            msg!("native mint: {:?}", native_mint::id());
             msg!("WSOL mint must be the wrapped-SOL mint (So111…)");
             return Err(ProgramError::InvalidAccountData);
         }
@@ -1348,14 +1350,21 @@ impl Processor {
         // ──────────────────────────────────────────────────────────────────────
 
         // Extra check in case the account already exists, skip if it does
-        if transient_wsol_ai.data_is_empty() {
+        if !transient_wsol_ai.data_is_empty() {
 
-            // Verify it's a valid token account with correct mint and owner
+            // Account exists, verify it's valid
             let token_account = spl_token::state::Account::unpack(&transient_wsol_ai.data.borrow())?;
             if token_account.mint != *wsol_mint_ai.key || 
             token_account.owner != *program_signer_ai.key {
+                msg!("Account already exists, but is invalid");
+                msg!("token_account.mint: {:?}", token_account.mint);
+                msg!("wsol_mint_ai.key: {:?}", wsol_mint_ai.key);
+                msg!("token_account.owner: {:?}", token_account.owner);
+                msg!("program_signer_ai.key: {:?}", program_signer_ai.key);
                 return Err(ProgramError::InvalidAccountData);
             }
+        } else {
+            // Account doesn't exist, create it
 
             // ──────────────────────────────────────────────────────────────────────
             // a) Create the account – owner = SPL Token program
@@ -1406,7 +1415,7 @@ impl Processor {
             // ──────────────────────────────────────────────────────────────────────
             // b) Initialise it as a token account – authority = program_signer PDA
             // ──────────────────────────────────────────────────────────────────────
-            let init_ix = spl_token::instruction::initialize_account(
+            let init_ix = spl_token::instruction::initialize_account3(
                 token_program_ai.key,
                 transient_wsol_ai.key,        // the account we just created
                 wsol_mint_ai.key,             // mint = WSOL
@@ -1420,8 +1429,6 @@ impl Processor {
                 &[
                     transient_wsol_ai.clone(),             // token account (not signer)
                     wsol_mint_ai.clone(),                  // mint
-                    program_signer_ai.clone(),             // authority — needs signature
-                    rent_sysvar_ai.clone(),                // rent sysvar
                 ],
                 &[program_signer_seeds],            // signs as program_signer_ai
             )?;
@@ -1492,20 +1499,24 @@ impl Processor {
         // 5. Deposit SOL into stake pool
         // ──────────────────────────────────────────────────────────────────────
 
+        let mut new_accounts = vec![
+            stake_pool_ai.clone(),
+            stake_pool_withdraw_auth_ai.clone(),
+            reserve_stake_ai.clone(),
+            program_signer_ai.clone(),
+            pool_tokens_to_ai.clone(),
+            manager_fee_ai.clone(),
+            referrer_pool_tokens_ai.clone(),
+            pool_mint_ai.clone(),
+            system_program_ai.clone(),
+            token_program_ai.clone(),
+        ];
+        if let Some(auth) = sol_deposit_auth_ai {
+            new_accounts.push(auth.clone());
+        }
         Self::process_deposit_sol(
             program_id,
-            &[
-                stake_pool_ai.clone(),
-                stake_pool_withdraw_auth_ai.clone(),
-                reserve_stake_ai.clone(),
-                program_signer_ai.clone(),
-                pool_tokens_to_ai.clone(),
-                manager_fee_ai.clone(),
-                referrer_pool_tokens_ai.clone(),
-                pool_mint_ai.clone(),
-                system_program_ai.clone(),
-                token_program_ai.clone(),
-            ],
+            &new_accounts,
             deposit_lamports,
             None,
         )

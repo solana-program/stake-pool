@@ -7219,6 +7219,7 @@ dependencies = [
  "borsh 1.5.7",
  "bs58",
  "clap",
+ "fogo-sessions-sdk",
  "serde",
  "serde_derive",
  "serde_json",

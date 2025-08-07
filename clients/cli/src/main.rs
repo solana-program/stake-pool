@@ -12,6 +12,11 @@ use {
         crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings,
         Arg, ArgGroup, ArgMatches, SubCommand,
     },
+    fogo_sessions_sdk::{
+        session::{is_session, Session},
+        token::instruction::transfer_checked,
+        token::PROGRAM_SIGNER_SEED,
+    },
     solana_clap_utils::{
         compute_unit_price::{compute_unit_price_arg, COMPUTE_UNIT_PRICE_ARG},
         input_parsers::{keypair_of, pubkey_of},
@@ -30,6 +35,7 @@ use {
         program_pack::Pack,
         pubkey::Pubkey,
         stake,
+        system_program,
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
@@ -1594,6 +1600,181 @@ fn command_deposit_wsol(
     Ok(())
 }
 
+fn command_deposit_wsol_with_session(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    from: &Option<Keypair>,  // The session account or user's keypair
+    pool_token_receiver_account: &Option<Pubkey>,
+    referrer_token_account: &Option<Pubkey>,
+    amount: f64,
+) -> CommandResult {
+    println!("[DEBUG] Entering command_deposit_wsol_with_session");
+    println!("[DEBUG] stake_pool_address: {:?}", stake_pool_address);
+    println!("[DEBUG] from: {:?}", from.as_ref().map(|k| k.pubkey()));
+    println!("[DEBUG] pool_token_receiver_account: {:?}", pool_token_receiver_account);
+    println!("[DEBUG] referrer_token_account: {:?}", referrer_token_account);
+    println!("[DEBUG] amount: {}", amount);
+
+    if !config.no_update {
+        println!("[DEBUG] Updating stake pool");
+        command_update(config, stake_pool_address, false, false, false)?;
+    }
+
+    let amount = native_token::sol_to_lamports(amount);
+    println!("[DEBUG] amount in lamports: {}", amount);
+
+    // The signer could be either a session account or the actual user
+    let user_pubkey = from
+        .as_ref()
+        .map_or_else(|| config.fee_payer.pubkey(), |keypair| keypair.pubkey());
+    println!("[DEBUG] user_pubkey: {:?}", user_pubkey);
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    println!("[DEBUG] stake_pool retrieved");
+
+    // User's WSOL ATA
+    let user_wsol_account = spl_associated_token_account::get_associated_token_address(
+        &user_pubkey,
+        &spl_token::native_mint::id(),
+    );
+    println!("[DEBUG] user_wsol_account: {:?}", user_wsol_account);
+
+    // Check WSOL balance
+    let wsol_balance = config
+        .rpc_client
+        .get_token_account_balance(&user_wsol_account)
+        .map(|balance| balance.amount.parse::<u64>().unwrap_or(0))
+        .unwrap_or(0);
+    println!("[DEBUG] wsol_balance: {}", wsol_balance);
+
+    if wsol_balance < amount {
+        println!("[DEBUG] Not enough wSOL to deposit into pool");
+        return Err(format!(
+            "Not enough wSOL to deposit into pool: {}.\nMaximum deposit amount is {} wSOL.",
+            Sol(amount),
+            Sol(wsol_balance)
+        )
+        .into());
+    }
+
+    let mut instructions: Vec<Instruction> = vec![];
+    let mut signers = vec![config.fee_payer.as_ref()];
+    if let Some(keypair) = from.as_ref() {
+        signers.push(keypair);
+    }
+
+    // Derive the program signer PDA
+    let (program_signer, _bump) = Pubkey::find_program_address(
+        &[PROGRAM_SIGNER_SEED], // PROGRAM_SIGNER_SEED from your processor
+        &config.stake_pool_program_id,
+    );
+    println!("[DEBUG] program_signer PDA: {:?}", program_signer);
+
+    // Derive the transient WSOL PDA
+    let (transient_wsol_pda, _transient_bump) = Pubkey::find_program_address(
+        &[b"transient_wsol", user_pubkey.as_ref()],
+        &config.stake_pool_program_id,
+    );
+    println!("[DEBUG] transient_wsol_pda: {:?}", transient_wsol_pda);
+
+    // Create pool token receiver account if needed
+    let mut total_rent_free_balances: u64 = 0;
+    let pool_token_receiver_account =
+        pool_token_receiver_account.unwrap_or(add_associated_token_account(
+            config,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            &user_pubkey, // Pool tokens go to the actual user, not the session
+            &mut instructions,
+            &mut total_rent_free_balances,
+        ));
+    println!("[DEBUG] pool_token_receiver_account: {:?}", pool_token_receiver_account);
+
+    let referrer_token_account = referrer_token_account.unwrap_or(pool_token_receiver_account);
+    println!("[DEBUG] referrer_token_account: {:?}", referrer_token_account);
+
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&config.stake_pool_program_id, stake_pool_address)
+            .0;
+    println!("[DEBUG] pool_withdraw_authority: {:?}", pool_withdraw_authority);
+
+    // Build the deposit_wsol_with_session instruction
+    let deposit_instruction = if let Some(deposit_authority) = config.funding_authority.as_ref() {
+        println!("[DEBUG] Using deposit authority");
+        let expected_sol_deposit_authority = stake_pool.sol_deposit_authority.ok_or_else(|| {
+            "SOL deposit authority specified in arguments but stake pool has none".to_string()
+        })?;
+        signers.push(deposit_authority.as_ref());
+        if deposit_authority.pubkey() != expected_sol_deposit_authority {
+            let error = format!(
+                "Invalid deposit authority specified, expected {}, received {}",
+                expected_sol_deposit_authority,
+                deposit_authority.pubkey()
+            );
+            return Err(error.into());
+        }
+
+        // Note: You'll need to add this instruction builder to the spl_stake_pool crate
+        spl_stake_pool::instruction::deposit_wsol_with_session(
+            &config.stake_pool_program_id,
+            &user_pubkey,
+            &program_signer,             // program_signer PDA
+            &user_wsol_account,          // user's WSOL ATA
+            &transient_wsol_pda,         // transient WSOL PDA
+            &spl_token::native_mint::id(), // WSOL mint
+            stake_pool_address,
+            &pool_withdraw_authority,
+            Some(&deposit_authority.pubkey()), // sol_deposit_authority
+            &stake_pool.reserve_stake,
+            &pool_token_receiver_account,
+            &stake_pool.manager_fee_account,
+            &referrer_token_account,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            &system_program::id(),
+            amount,
+        )
+    } else {
+        println!("[DEBUG] Not using deposit authority");
+        spl_stake_pool::instruction::deposit_wsol_with_session(
+            &config.stake_pool_program_id,
+            &user_pubkey,              // signer_or_session
+            &program_signer,             // program_signer PDA
+            &user_wsol_account,          // user's WSOL ATA
+            &transient_wsol_pda,         // transient WSOL PDA
+            &spl_token::native_mint::id(), // WSOL mint
+            stake_pool_address,
+            &pool_withdraw_authority,
+            None,                       // no sol_deposit_authority
+            &stake_pool.reserve_stake,
+            &pool_token_receiver_account,
+            &stake_pool.manager_fee_account,
+            &referrer_token_account,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            &system_program::id(),
+            amount,
+        )
+    };
+    println!("[DEBUG] deposit_instruction built");
+
+    instructions.push(deposit_instruction);
+
+    println!("[DEBUG] signers: {:?}", signers.iter().map(|s| s.pubkey()).collect::<Vec<_>>());
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers_and_additional_fee(
+        config,
+        &instructions,
+        &signers,
+        total_rent_free_balances,
+    )?;
+    println!("[DEBUG] transaction created");
+
+    send_transaction(config, transaction)?;
+    println!("[DEBUG] Transaction sent successfully");
+    Ok(())
+}
+
 fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let reserve_stake_account_address = stake_pool.reserve_stake.to_string();
@@ -3077,6 +3258,34 @@ fn main() {
                           Defaults to the token receiver."),
             )
         )
+        .subcommand(SubCommand::with_name("deposit-wsol-with-session")
+            .about("Deposit wrapped SOL into the stake pool in exchange for pool tokens")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            )
+            .arg(
+                Arg::with_name("amount")
+                    .index(2)
+                    .validator(is_amount)
+                    .value_name("AMOUNT")
+                    .takes_value(true)
+                    .help("Amount in SOL to deposit into the stake pool reserve account."),
+            )
+            .arg(
+                Arg::with_name("from")
+                    .long("from")
+                    .validator(is_valid_signer)
+                    .value_name("KEYPAIR")
+                    .takes_value(true)
+                    .help("Source account of funds. [default: cli config keypair]"),
+            )
+        )
         .subcommand(SubCommand::with_name("list")
             .about("List stake accounts managed by this pool")
             .arg(
@@ -3634,6 +3843,12 @@ fn main() {
                 &referrer,
                 amount,
             )
+        }
+        ("deposit-wsol-with-session", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let from = keypair_of(arg_matches, "from");
+            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            command_deposit_wsol_with_session(&config, &stake_pool_address, &from, &None, &None, amount)
         }
         ("list", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
