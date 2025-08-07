@@ -713,9 +713,9 @@ dependencies = [
 
 [[package]]
 name = "bytemuck_derive"
-version = "1.9.3"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ecc273b49b3205b83d648f0690daa588925572cc5063745bfe547fe7ec8e1a1"
+checksum = "4f154e572231cb6ba2bd1176980827e3d5dc04cc183a75dea38109fbdd672d29"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5536,9 +5536,9 @@ dependencies = [
 
 [[package]]
 name = "solana-program-error"
-version = "2.2.1"
+version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8ae2c1a8d0d4ae865882d5770a7ebca92bab9c685e43f0461682c6c05a35bfa"
+checksum = "9ee2e0217d642e2ea4bee237f37bd61bb02aec60da3647c48ff88f6556ade775"
 dependencies = [
  "borsh 1.5.7",
  "num-traits",
@@ -7184,7 +7184,7 @@ dependencies = [
  "solana-log-collector",
  "solana-program-runtime",
  "solana-sdk-ids",
- "solana-zk-sdk",
+ "solana-zk-sdk 2.3.4",
 ]
 
 [[package]]
@@ -7192,6 +7192,42 @@ name = "solana-zk-sdk"
 version = "2.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c13cbe908b9142274d5cdedc57b6bbc705181d05c7a2c7df21a76ad93463119"
+dependencies = [
+ "aes-gcm-siv",
+ "base64 0.22.1",
+ "bincode",
+ "bytemuck",
+ "bytemuck_derive",
+ "curve25519-dalek 4.1.3",
+ "itertools 0.12.1",
+ "js-sys",
+ "merlin",
+ "num-derive",
+ "num-traits",
+ "rand 0.8.5",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha3",
+ "solana-derivation-path",
+ "solana-instruction",
+ "solana-pubkey",
+ "solana-sdk-ids",
+ "solana-seed-derivable",
+ "solana-seed-phrase",
+ "solana-signature",
+ "solana-signer",
+ "subtle",
+ "thiserror 2.0.12",
+ "wasm-bindgen",
+ "zeroize",
+]
+
+[[package]]
+name = "solana-zk-sdk"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dffbd0b7537f4249d69b74c632f8eac1d2726572022791f9ead65a67d3f6905"
 dependencies = [
  "aes-gcm-siv",
  "base64 0.22.1",
@@ -7364,8 +7400,8 @@ dependencies = [
  "solana-sdk-ids",
  "solana-system-interface",
  "solana-sysvar",
- "solana-zk-sdk",
- "spl-pod",
+ "solana-zk-sdk 2.3.4",
+ "spl-pod 0.5.1",
  "spl-token-confidential-transfer-proof-extraction 0.3.0",
 ]
 
@@ -7388,8 +7424,8 @@ dependencies = [
  "solana-security-txt",
  "solana-system-interface",
  "solana-sysvar",
- "solana-zk-sdk",
- "spl-pod",
+ "solana-zk-sdk 2.3.4",
+ "spl-pod 0.5.1",
  "spl-token-confidential-transfer-proof-extraction 0.4.0",
 ]
 
@@ -7433,7 +7469,26 @@ dependencies = [
  "solana-program-error",
  "solana-program-option",
  "solana-pubkey",
- "solana-zk-sdk",
+ "solana-zk-sdk 2.3.4",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "spl-pod"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e3fd93444b7db9eb3465b1c98af4bbb35445bd36f6db8323db835a500c41f45"
+dependencies = [
+ "borsh 1.5.7",
+ "bytemuck",
+ "bytemuck_derive",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program-error",
+ "solana-program-option",
+ "solana-pubkey",
+ "solana-zk-sdk 3.0.0",
  "thiserror 2.0.12",
 ]
 
@@ -7486,7 +7541,7 @@ dependencies = [
  "solana-stake-interface",
  "solana-system-interface",
  "solana-vote-program",
- "spl-pod",
+ "spl-pod 0.6.0",
  "spl-token",
  "spl-token-2022 9.0.0",
  "test-case",
@@ -7538,7 +7593,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "spl-discriminator",
- "spl-pod",
+ "spl-pod 0.5.1",
  "spl-program-error",
  "spl-type-length-value",
  "thiserror 2.0.12",
@@ -7601,10 +7656,10 @@ dependencies = [
  "solana-security-txt",
  "solana-system-interface",
  "solana-sysvar",
- "solana-zk-sdk",
+ "solana-zk-sdk 2.3.4",
  "spl-elgamal-registry 0.2.0",
  "spl-memo",
- "spl-pod",
+ "spl-pod 0.5.1",
  "spl-token",
  "spl-token-confidential-transfer-ciphertext-arithmetic",
  "spl-token-confidential-transfer-proof-extraction 0.3.0",
@@ -7645,10 +7700,10 @@ dependencies = [
  "solana-security-txt",
  "solana-system-interface",
  "solana-sysvar",
- "solana-zk-sdk",
+ "solana-zk-sdk 2.3.4",
  "spl-elgamal-registry 0.3.0",
  "spl-memo",
- "spl-pod",
+ "spl-pod 0.5.1",
  "spl-token",
  "spl-token-confidential-transfer-ciphertext-arithmetic",
  "spl-token-confidential-transfer-proof-extraction 0.4.0",
@@ -7669,7 +7724,7 @@ dependencies = [
  "base64 0.22.1",
  "bytemuck",
  "solana-curve25519",
- "solana-zk-sdk",
+ "solana-zk-sdk 2.3.4",
 ]
 
 [[package]]
@@ -7687,8 +7742,8 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "solana-sdk-ids",
- "solana-zk-sdk",
- "spl-pod",
+ "solana-zk-sdk 2.3.4",
+ "spl-pod 0.5.1",
  "thiserror 2.0.12",
 ]
 
@@ -7707,8 +7762,8 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "solana-sdk-ids",
- "solana-zk-sdk",
- "spl-pod",
+ "solana-zk-sdk 2.3.4",
+ "spl-pod 0.5.1",
  "thiserror 2.0.12",
 ]
 
@@ -7719,7 +7774,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae5b124840d4aed474cef101d946a798b806b46a509ee4df91021e1ab1cef3ef"
 dependencies = [
  "curve25519-dalek 4.1.3",
- "solana-zk-sdk",
+ "solana-zk-sdk 2.3.4",
  "thiserror 2.0.12",
 ]
 
@@ -7738,7 +7793,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "spl-discriminator",
- "spl-pod",
+ "spl-pod 0.5.1",
  "thiserror 2.0.12",
 ]
 
@@ -7758,7 +7813,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "spl-discriminator",
- "spl-pod",
+ "spl-pod 0.5.1",
  "spl-type-length-value",
  "thiserror 2.0.12",
 ]
@@ -7781,7 +7836,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey",
  "spl-discriminator",
- "spl-pod",
+ "spl-pod 0.5.1",
  "spl-program-error",
  "spl-tlv-account-resolution",
  "spl-type-length-value",
@@ -7802,7 +7857,7 @@ dependencies = [
  "solana-msg",
  "solana-program-error",
  "spl-discriminator",
- "spl-pod",
+ "spl-pod 0.5.1",
  "thiserror 2.0.12",
 ]
 
