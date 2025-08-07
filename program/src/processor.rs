@@ -19,15 +19,10 @@ use {
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, EPHEMERAL_STAKE_SEED_PREFIX,
         TRANSIENT_STAKE_SEED_PREFIX,
-    },
-    fogo_sessions_sdk::{
+    }, borsh::BorshDeserialize, fogo_sessions_sdk::{
         session::{is_session, Session},
-        token::instruction::transfer_checked,
-        token::PROGRAM_SIGNER_SEED,
-    },
-    borsh::BorshDeserialize,
-    num_traits::FromPrimitive,
-    solana_program::{
+        token::{instruction::transfer_checked, PROGRAM_SIGNER_SEED},
+    }, num_traits::FromPrimitive, solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh1::try_from_slice_unchecked,
         clock::{Clock, Epoch},
@@ -41,16 +36,11 @@ use {
         rent::Rent,
         stake, system_instruction, system_program,
         sysvar::Sysvar,
-    },
-    spl_token_2022::{
+    }, spl_associated_token_account::get_associated_token_address, spl_token::{instruction as token_ix, native_mint}, spl_token_2022::{
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
         state::Mint,
-    },
-    spl_token::native_mint,
-    spl_token::instruction as token_ix,
-    std::num::NonZeroU32,
-    spl_associated_token_account::get_associated_token_address,
+    }, std::num::NonZeroU32
 };
 
 /// Deserialize the stake state from `AccountInfo`
@@ -1479,7 +1469,7 @@ impl Processor {
         let close_ix = token_ix::close_account(
             token_program_ai.key,
             transient_wsol_ai.key,
-            program_signer_ai.key,   // where the lamports will land
+            reserve_stake_ai.key,   // SOL land directly into the reserve stake account
             program_signer_ai.key,   // authority = program_signer PDA
             &[],                    // no multisig signers
         )?;
@@ -1489,7 +1479,7 @@ impl Processor {
             &close_ix,
             &[
                 transient_wsol_ai.clone(),
-                program_signer_ai.clone(),   // destination & signer
+                reserve_stake_ai.clone(),   // destination & signer
                 program_signer_ai.clone(),   // authority (same as destination)
             ],
             &[program_signer_seeds],               // program_signer PDA seeds
@@ -1503,7 +1493,7 @@ impl Processor {
             stake_pool_ai.clone(),
             stake_pool_withdraw_auth_ai.clone(),
             reserve_stake_ai.clone(),
-            program_signer_ai.clone(),
+            reserve_stake_ai.clone(), // signals no transfer needed (already done)
             pool_tokens_to_ai.clone(),
             manager_fee_ai.clone(),
             referrer_pool_tokens_ai.clone(),
@@ -2994,11 +2984,15 @@ impl Processor {
             }
         }
 
-        Self::sol_transfer(
-            from_user_lamports_info.clone(),
-            reserve_stake_account_info.clone(),
-            deposit_lamports,
-        )?;
+        // special case: if the user is depositing to the reserve stake account, we don't need to transfer the lamports
+        // this is needed for the "deposit wsol with session" case, where we have already transferred the lamports to the reserve stake account
+        if from_user_lamports_info.key != reserve_stake_account_info.key {
+            Self::sol_transfer(
+                from_user_lamports_info.clone(),
+                reserve_stake_account_info.clone(),
+                deposit_lamports,
+            )?;
+        }
 
         Self::token_mint_to(
             stake_pool_info.key,
