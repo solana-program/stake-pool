@@ -642,23 +642,6 @@ impl Processor {
         invoke(&ix, &[source, destination])
     }
 
-    /// Issue a SPL Token `CloseAccount` instruction.
-    fn token_close_account<'a>(
-        token_program: AccountInfo<'a>,
-        account: AccountInfo<'a>,
-        destination: AccountInfo<'a>,
-        authority: AccountInfo<'a>,
-    ) -> Result<(), ProgramError> {
-        let ix = spl_token_2022::instruction::close_account(
-            token_program.key,
-            account.key,
-            destination.key,
-            authority.key,
-            &[],
-        )?;
-        invoke(&ix, &[account, destination, authority])
-    }
-
     /// Processes `Initialize` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_initialize(
@@ -1190,79 +1173,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [`DepositWsol`](enum.Instruction.html).
-    #[inline(never)]
-    fn process_deposit_wsol(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        deposit_lamports: u64,
-        minimum_pool_tokens_out: Option<u64>,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let withdraw_authority_info = next_account_info(account_info_iter)?;
-        let reserve_stake_account_info = next_account_info(account_info_iter)?;
-        let from_wsol_info = next_account_info(account_info_iter)?;
-        let user_authority_info = next_account_info(account_info_iter)?;
-        let from_user_lamports_info = next_account_info(account_info_iter)?;
-        let dest_user_pool_info = next_account_info(account_info_iter)?;
-        let manager_fee_info = next_account_info(account_info_iter)?;
-        let referrer_fee_info = next_account_info(account_info_iter)?;
-        let pool_mint_info = next_account_info(account_info_iter)?;
-        let system_program_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
-        let wsol_mint_info = next_account_info(account_info_iter)?;
-        let sol_deposit_authority_info = account_info_iter.next();
-
-        // unwrap WSOL into the provided lamports account
-        if *from_wsol_info.owner != *token_program_info.key {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-        let wsol_account = spl_token_2022::state::Account::unpack(&from_wsol_info.data.borrow())?;
-        if wsol_account.mint != *wsol_mint_info.key || *wsol_mint_info.key != native_mint::id() {
-            return Err(StakePoolError::WrongAccountMint.into());
-        }
-        if wsol_account.owner != *user_authority_info.key {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        if wsol_account.amount != deposit_lamports {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        if !user_authority_info.is_signer {
-            return Err(StakePoolError::SignatureMissing.into());
-        }
-
-        Self::token_close_account(
-            token_program_info.clone(),
-            from_wsol_info.clone(),
-            from_user_lamports_info.clone(),
-            user_authority_info.clone(),
-        )?;
-
-        let mut new_accounts = vec![
-            stake_pool_info.clone(),
-            withdraw_authority_info.clone(),
-            reserve_stake_account_info.clone(),
-            from_user_lamports_info.clone(),
-            dest_user_pool_info.clone(),
-            manager_fee_info.clone(),
-            referrer_fee_info.clone(),
-            pool_mint_info.clone(),
-            system_program_info.clone(),
-            token_program_info.clone(),
-        ];
-        if let Some(auth) = sol_deposit_authority_info {
-            new_accounts.push(auth.clone());
-        }
-
-        Self::process_deposit_sol(
-            program_id,
-            &new_accounts,
-            deposit_lamports,
-            minimum_pool_tokens_out,
-        )
-    }
-
+    
     /// Processes [`DepositWsolWithSession`](
     ///     crate::instruction::StakePoolInstruction::DepositWsolWithSession
     /// ).
@@ -3934,10 +3845,6 @@ impl Processor {
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");
                 Self::process_deposit_sol(program_id, accounts, lamports, None)
-            }
-            StakePoolInstruction::DepositWsol(lamports) => {
-                msg!("Instruction: DepositWsol");
-                Self::process_deposit_wsol(program_id, accounts, lamports, None)
             }
             StakePoolInstruction::DepositWsolWithSession { lamports } => {
                 msg!("Instruction: DepositWsolWithSession");

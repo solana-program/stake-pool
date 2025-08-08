@@ -196,12 +196,8 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     index: 26,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
   },
-  DepositWsol: {  
-    index: 27,
-    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
-  },
   DepositWsolWithSession: {
-    index: 28,
+    index: 27,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
   },
 });

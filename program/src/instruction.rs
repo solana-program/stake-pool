@@ -738,25 +738,6 @@ pub enum StakePoolInstruction {
         minimum_lamports_out: u64,
     },
 
-    ///   Deposit wrapped SOL directly into the pool's reserve account.
-    ///   The WSOL account is closed and its lamports used for the deposit.
-    ///
-    ///   0. `[w]` Stake pool
-    ///   1. `[]` Stake pool withdraw authority
-    ///   2. `[w]` Reserve stake account, to deposit SOL
-    ///   3. `[w]` WSOL account to unwrap
-    ///   4. `[s]` User authority for the WSOL account
-    ///   5. `[w]` User system account receiving the unwrapped lamports
-    ///   6. `[w]` User account to receive pool tokens
-    ///   7. `[w]` Account to receive fee tokens
-    ///   8. `[w]` Account to receive a portion of fee as referral fees
-    ///   9. `[w]` Pool token mint account
-    ///  10. `[]` System program account
-    ///  11. `[]` Token program id
-    ///  12. `[]` Wrapped SOL mint
-    ///  13. `[s]` (Optional) Stake pool sol deposit authority
-    DepositWsol(u64),
-
     ///   Deposit wrapped SOL via a Fogo session.
     ///   The WSOL account is closed and its lamports used for the deposit.
     ///
@@ -2239,50 +2220,6 @@ pub fn deposit_sol_with_authority_and_slippage(
         lamports_in,
         Some(minimum_pool_tokens_out),
     )
-}
-
-/// Creates instruction to deposit wrapped SOL directly into a stake pool.
-/// The provided WSOL account will be closed and its lamports deposited.
-pub fn deposit_wsol(
-    program_id: &Pubkey,
-    stake_pool: &Pubkey,
-    stake_pool_withdraw_authority: &Pubkey,
-    reserve_stake_account: &Pubkey,
-    wsol_account: &Pubkey,
-    wsol_authority: &Pubkey,
-    lamports_destination: &Pubkey,
-    pool_tokens_to: &Pubkey,
-    manager_fee_account: &Pubkey,
-    referrer_pool_tokens_account: &Pubkey,
-    pool_mint: &Pubkey,
-    token_program_id: &Pubkey,
-    wsol_mint: &Pubkey,
-    sol_deposit_authority: Option<&Pubkey>,
-    lamports_in: u64,
-) -> Instruction {
-    let mut accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new(*reserve_stake_account, false),
-        AccountMeta::new(*wsol_account, false),
-        AccountMeta::new_readonly(*wsol_authority, true),
-        AccountMeta::new(*lamports_destination, false),
-        AccountMeta::new(*pool_tokens_to, false),
-        AccountMeta::new(*manager_fee_account, false),
-        AccountMeta::new(*referrer_pool_tokens_account, false),
-        AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*wsol_mint, false),
-    ];
-    if let Some(auth) = sol_deposit_authority {
-        accounts.push(AccountMeta::new_readonly(*auth, true));
-    }
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: borsh::to_vec(&StakePoolInstruction::DepositWsol(lamports_in)).unwrap(),
-    }
 }
 
 /// Creates a `DepositWsolWithSession` instruction.
