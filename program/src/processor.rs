@@ -1416,6 +1416,7 @@ impl Processor {
             &new_accounts,
             deposit_lamports,
             None,
+            true,
         )
     }
 
@@ -2806,6 +2807,7 @@ impl Processor {
         accounts: &[AccountInfo],
         deposit_lamports: u64,
         minimum_pool_tokens_out: Option<u64>,
+        already_transferred: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2891,9 +2893,9 @@ impl Processor {
             }
         }
 
-        // special case: if the user is depositing to the reserve stake account, we don't need to transfer the lamports
+        // special case: if the user has already transferred the lamports to the reserve stake account, we don't need to transfer the lamports
         // this is needed for the "deposit wsol with session" case, where we have already transferred the lamports to the reserve stake account
-        if from_user_lamports_info.key != reserve_stake_account_info.key {
+        if !already_transferred {
             Self::sol_transfer(
                 from_user_lamports_info.clone(),
                 reserve_stake_account_info.clone(),
@@ -3844,7 +3846,7 @@ impl Processor {
             }
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");
-                Self::process_deposit_sol(program_id, accounts, lamports, None)
+                Self::process_deposit_sol(program_id, accounts, lamports, None, false)
             }
             StakePoolInstruction::DepositWsolWithSession { lamports } => {
                 msg!("Instruction: DepositWsolWithSession");
@@ -3895,6 +3897,7 @@ impl Processor {
                     accounts,
                     lamports_in,
                     Some(minimum_pool_tokens_out),
+                    false,
                 )
             }
             StakePoolInstruction::WithdrawSolWithSlippage {
