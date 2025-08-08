@@ -12,3 +12,22 @@ Python bindings are available in the `./py` directory.
 
 The repository [README](https://github.com/solana-labs/solana-program-library#audits)
 contains information about program audits.
+
+## Development
+
+### Program
+
+```
+cd program
+cargo build-sbf
+solana program deploy -u $RPC_URL --program-id $PROGRAM_ID ../target/deploy/spl_stake_pool.so 
+```
+
+## JS SDK
+
+```
+cd clients/js-legacy
+pnpm run build
+```
+
+For local development, you need to import it as a dependency like this: `"@solana/spl-stake-pool": "file:../stake-pool-v2/clients/js-legacy",`

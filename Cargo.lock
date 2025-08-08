@@ -1443,6 +1443,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "fogo-sessions-sdk"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "160b39815ebff9ec1aaf99172c7d0405cf621b50dbc8e4c3fb316807fb544317"
+dependencies = [
+ "borsh 1.5.7",
+ "solana-program",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7180,6 +7191,7 @@ dependencies = [
  "bincode",
  "borsh 1.5.7",
  "bytemuck",
+ "fogo-sessions-sdk",
  "num-derive",
  "num-traits",
  "num_enum",
@@ -7191,6 +7203,7 @@ dependencies = [
  "solana-sdk",
  "solana-security-txt",
  "solana-vote-program",
+ "spl-associated-token-account 7.0.0",
  "spl-pod",
  "spl-token 8.0.0",
  "spl-token-2022 9.0.0",
@@ -7206,6 +7219,7 @@ dependencies = [
  "borsh 1.5.7",
  "bs58",
  "clap",
+ "fogo-sessions-sdk",
  "serde",
  "serde_derive",
  "serde_json",

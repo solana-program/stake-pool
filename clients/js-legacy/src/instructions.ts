@@ -19,6 +19,7 @@ import {
   STAKE_POOL_PROGRAM_ID,
   DEVNET_STAKE_POOL_PROGRAM_ID,
 } from './constants';
+import { BN } from 'bn.js';
 
 /**
  * An enumeration of valid StakePoolInstructionType's
@@ -38,7 +39,8 @@ export type StakePoolInstructionType =
   | 'DecreaseValidatorStakeWithReserve'
   | 'Redelegate'
   | 'AddValidatorToPool'
-  | 'RemoveValidatorFromPool';
+  | 'RemoveValidatorFromPool'
+  | 'DepositWsolWithSession';
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
@@ -177,6 +179,26 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   Redelegate: {
     index: 22,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
+  },
+  DepositStakeWithSlippage: {
+    index: 23,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
+  },
+  WithdrawStakeWithSlippage: {
+    index: 24,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
+  },
+  DepositSolWithSlippage: {
+    index: 25,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
+  },
+  WithdrawSolWithSlippage: {
+    index: 26,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
+  },
+  DepositWsolWithSession: {
+    index: 27,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
   },
 });
 
@@ -885,6 +907,66 @@ export class StakePoolInstruction {
     });
   }
 
+  /**
+ * Helper function to build the deposit_wsol_with_session instruction
+ */
+static buildDepositWsolWithSessionInstruction(params: {
+  programId: PublicKey;
+  signerOrSession: PublicKey;
+  feePayer: PublicKey;
+  programSigner: PublicKey;
+  userWsolAccount: PublicKey;
+  transientWsolPda: PublicKey;
+  wsolMint: PublicKey;
+  stakePool: PublicKey;
+  withdrawAuthority: PublicKey;
+  solDepositAuthority?: PublicKey;
+  reserveStake: PublicKey;
+  destinationPoolAccount: PublicKey;
+  managerFeeAccount: PublicKey;
+  referralPoolAccount: PublicKey;
+  poolMint: PublicKey;
+  tokenProgramId: PublicKey;
+  lamports: number;
+}): TransactionInstruction {
+  const keys = [
+    { pubkey: params.signerOrSession, isSigner: true, isWritable: true },
+    { pubkey: params.feePayer, isSigner: true, isWritable: true },
+    { pubkey: params.programSigner, isSigner: false, isWritable: true },
+    { pubkey: params.userWsolAccount, isSigner: false, isWritable: true },
+    { pubkey: params.transientWsolPda, isSigner: false, isWritable: true },
+    { pubkey: params.wsolMint, isSigner: false, isWritable: false },
+    { pubkey: params.stakePool, isSigner: false, isWritable: true },
+    { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
+    { pubkey: params.reserveStake, isSigner: false, isWritable: true },
+    { pubkey: params.destinationPoolAccount, isSigner: false, isWritable: true },
+    { pubkey: params.managerFeeAccount, isSigner: false, isWritable: true },
+    { pubkey: params.referralPoolAccount, isSigner: false, isWritable: true },
+    { pubkey: params.poolMint, isSigner: false, isWritable: true },
+    { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  ];
+
+  if (params.solDepositAuthority) {
+    keys.push({
+      pubkey: params.solDepositAuthority,
+      isSigner: true,
+      isWritable: false,
+    });
+  }
+
+  // Encode the instruction data
+  // This should match your Rust enum variant for DepositWsolWithSession
+  // Adjust the discriminator based on your actual instruction enum
+  const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DepositWsolWithSession;
+  const data = encodeData(type, { lamports: params.lamports });
+
+  return new TransactionInstruction({
+    keys,
+    programId: params.programId,
+    data,
+  });
+}
   /**
    * Creates a transaction instruction to withdraw active stake from a stake pool.
    */

@@ -5,6 +5,7 @@ use {
     solana_program::{decode_error::DecodeError, program_error::ProgramError},
     thiserror::Error,
 };
+use fogo_sessions_sdk::error::SessionError;
 
 /// Errors that may be returned by the Stake Pool program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
@@ -164,10 +165,51 @@ pub enum StakePoolError {
     /// Missing required sysvar account
     #[error("Missing required sysvar account")]
     MissingRequiredSysvar,
+
+    // 45. Session-related errors
+    /// The session has expired
+    #[error("SessionExpired")]
+    SessionExpired,
+    /// The session was created for a different user
+    #[error("SessionUserMismatch")]
+    SessionUserMismatch,
+    /// The session was created for a different program
+    #[error("SessionUnauthorizedProgram")]
+    SessionUnauthorizedProgram,
+    /// A required program signer appears as a non-signer
+    #[error("SessionMissingRequiredSignature")]
+    SessionMissingRequiredSignature,
+    /// There was an error loading the clock sysvar
+    #[error("SessionClockError")]
+    SessionClockError,
+    /// A session account failed to deserialize
+    #[error("SessionInvalidAccountData")]
+    SessionInvalidAccountData,
+    /// A session account has the wrong discriminator
+    #[error("SessionInvalidAccountDiscriminator")]
+    SessionInvalidAccountDiscriminator,
+    /// A session account has the wrong version
+    #[error("SessionInvalidAccountVersion")]
+    SessionInvalidAccountVersion,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
         ProgramError::Custom(e as u32)
+    }
+}
+
+impl From<SessionError> for StakePoolError {
+    fn from(e: SessionError) -> Self {
+        match e {
+            SessionError::Expired => StakePoolError::SessionExpired,
+            SessionError::UserMismatch => StakePoolError::SessionUserMismatch,
+            SessionError::UnauthorizedProgram => StakePoolError::SessionUnauthorizedProgram,
+            SessionError::MissingRequiredSignature => StakePoolError::SessionMissingRequiredSignature,
+            SessionError::ClockError => StakePoolError::SessionClockError,
+            SessionError::InvalidAccountData => StakePoolError::SessionInvalidAccountData,
+            SessionError::InvalidAccountDiscriminator => StakePoolError::SessionInvalidAccountDiscriminator,
+            SessionError::InvalidAccountVersion => StakePoolError::SessionInvalidAccountVersion,
+        }
     }
 }
 impl<T> DecodeError<T> for StakePoolError {
