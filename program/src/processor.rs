@@ -20,7 +20,7 @@ use {
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, EPHEMERAL_STAKE_SEED_PREFIX,
         TRANSIENT_STAKE_SEED_PREFIX,
     }, borsh::BorshDeserialize, fogo_sessions_sdk::{
-        session::{is_session, Session},
+        session::Session,
         token::{instruction::transfer_checked, PROGRAM_SIGNER_SEED},
     }, num_traits::FromPrimitive, solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -1278,6 +1278,7 @@ impl Processor {
         // ──────────────────────────────────────────────────────────────────────
         let mut ai = accounts.iter();
         let signer_or_session_ai         = next_account_info(&mut ai)?; // [signer]
+        let fee_payer_ai                  = next_account_info(&mut ai)?; // [signer]
         let program_signer_ai    = next_account_info(&mut ai)?; // writable (PDA)
         let user_wsol_ai                = next_account_info(&mut ai)?; // writable
         let transient_wsol_ai           = next_account_info(&mut ai)?; // writable
@@ -1297,7 +1298,7 @@ impl Processor {
         // let clock_sysvar_ai             = next_account_info(&mut ai)?; // read-only
         // let stake_history_sysvar_ai     = next_account_info(&mut ai)?; // read-only
         // let rent_sysvar_ai              = next_account_info(&mut ai)?; // read-only
-    
+
 
         // ──────────────────────────────────────────────────────────────────────
         // 1. Basic sanity checks
@@ -1316,7 +1317,19 @@ impl Processor {
             signer_or_session_ai,
             program_id,
         )
-        .map_err(|_| ProgramError::InvalidAccountData)?;
+        .map_err(|e| -> ProgramError {
+            use fogo_sessions_sdk::error::SessionError;
+            match e {
+                SessionError::Expired => ProgramError::from(StakePoolError::SessionExpired),
+                SessionError::UserMismatch => ProgramError::from(StakePoolError::SessionUserMismatch),
+                SessionError::UnauthorizedProgram => ProgramError::from(StakePoolError::SessionUnauthorizedProgram),
+                SessionError::MissingRequiredSignature => ProgramError::from(StakePoolError::SessionMissingRequiredSignature),
+                SessionError::ClockError => ProgramError::from(StakePoolError::SessionClockError),
+                SessionError::InvalidAccountData => ProgramError::from(StakePoolError::SessionInvalidAccountData),
+                SessionError::InvalidAccountDiscriminator => ProgramError::from(StakePoolError::SessionInvalidAccountDiscriminator),
+                SessionError::InvalidAccountVersion => ProgramError::from(StakePoolError::SessionInvalidAccountVersion),
+            }
+        })?;
 
         // Verify `user_wsol_ai` is that user’s ATA for WSOL
         let expected_wsol_ata =
@@ -1376,7 +1389,7 @@ impl Processor {
             let rent = Rent::get()?;
             let rent_lamports = rent.minimum_balance(spl_token::state::Account::LEN);
             let create_ix = solana_program::system_instruction::create_account(
-                signer_or_session_ai.key,                  // payer (wallet or session key)
+                fee_payer_ai.key,                  // payer (wallet or session key)
                 transient_wsol_ai.key,                     // new account address (PDA)
                 rent_lamports,                             // rent-exempt lamports
                 spl_token::state::Account::LEN as u64,     // space for a token account
@@ -1395,7 +1408,7 @@ impl Processor {
             invoke_signed(
                 &create_ix,
                 &[
-                    signer_or_session_ai.clone(),          // payer
+                    fee_payer_ai.clone(),          // payer
                     transient_wsol_ai.clone(),             // new account
                     system_program_ai.clone(),
                 ],
@@ -1414,13 +1427,12 @@ impl Processor {
 
             // `program_signer_ai` (program_signer) must sign this CPI,
             // so we reuse `program_signer_seeds` that you prepared earlier.
-            invoke_signed(
+            invoke(
                 &init_ix,
                 &[
                     transient_wsol_ai.clone(),             // token account (not signer)
                     wsol_mint_ai.clone(),                  // mint
-                ],
-                &[program_signer_seeds],            // signs as program_signer_ai
+                ],        // signs as program_signer_ai
             )?;
         }
 
@@ -4061,6 +4073,14 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::IncorrectMintDecimals => msg!("Error: Provided mint does not have 9 decimals to match SOL"),
             StakePoolError::ReserveDepleted => msg!("Error: Pool reserve does not have enough lamports to fund rent-exempt reserve in split destination. Deposit more SOL in reserve, or pre-fund split destination with the rent-exempt reserve for a stake account."),
             StakePoolError::MissingRequiredSysvar => msg!("Missing required sysvar account"),
+            StakePoolError::SessionExpired => msg!("Error: This session has expired"),
+            StakePoolError::SessionUserMismatch => msg!("Error: This session was created for a different user"),
+            StakePoolError::SessionUnauthorizedProgram => msg!("Error: This session was created for a different program"),
+            StakePoolError::SessionMissingRequiredSignature => msg!("Error: A required program signer appears as a non-signer"),
+            StakePoolError::SessionClockError => msg!("Error: There was an error loading the clock sysvar"),
+            StakePoolError::SessionInvalidAccountData => msg!("Error: A session account failed to deserialize"),
+            StakePoolError::SessionInvalidAccountDiscriminator => msg!("Error: A session account has the wrong discriminator"),
+            StakePoolError::SessionInvalidAccountVersion => msg!("Error: A session account has the wrong version"),
         }
     }
 }

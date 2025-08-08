@@ -428,6 +428,7 @@ export async function depositWsolWithSession(
     StakePoolInstruction.buildDepositWsolWithSessionInstruction({
       programId: stakePoolProgramId,
       signerOrSession,
+      feePayer: paymaster ?? signerOrSession,
       programSigner,
       userWsolAccount,
       transientWsolPda,

@@ -2289,6 +2289,7 @@ pub fn deposit_wsol(
 pub fn deposit_wsol_with_session(
     program_id: &Pubkey,
     signer_or_session: &Pubkey,
+    fee_payer: &Pubkey,
     program_signer: &Pubkey,
     user_wsol_account: &Pubkey,
     transient_wsol_account: &Pubkey,
@@ -2312,6 +2313,7 @@ pub fn deposit_wsol_with_session(
 ) -> Instruction {
     let mut accounts = vec![
         /* 0  */ AccountMeta::new(*signer_or_session, /*is_signer*/ true),
+        /* 1  */ AccountMeta::new(*fee_payer, /*is_signer*/ true),
         /* 1  */ AccountMeta::new(*program_signer, true),
         /* 2  */ AccountMeta::new(*user_wsol_account,  false),
         /* 3  */ AccountMeta::new(*transient_wsol_account, false),

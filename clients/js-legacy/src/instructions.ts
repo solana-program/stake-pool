@@ -917,6 +917,7 @@ export class StakePoolInstruction {
 static buildDepositWsolWithSessionInstruction(params: {
   programId: PublicKey;
   signerOrSession: PublicKey;
+  feePayer: PublicKey;
   programSigner: PublicKey;
   userWsolAccount: PublicKey;
   transientWsolPda: PublicKey;
@@ -933,17 +934,14 @@ static buildDepositWsolWithSessionInstruction(params: {
   lamports: number;
 }): TransactionInstruction {
   const keys = [
-    { pubkey: params.signerOrSession, isSigner: true, isWritable: false },
+    { pubkey: params.signerOrSession, isSigner: true, isWritable: true },
+    { pubkey: params.feePayer, isSigner: true, isWritable: true },
     { pubkey: params.programSigner, isSigner: false, isWritable: true },
     { pubkey: params.userWsolAccount, isSigner: false, isWritable: true },
     { pubkey: params.transientWsolPda, isSigner: false, isWritable: true },
     { pubkey: params.wsolMint, isSigner: false, isWritable: false },
     { pubkey: params.stakePool, isSigner: false, isWritable: true },
     { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
-    // Add sol_deposit_authority or system program as placeholder
-    params.solDepositAuthority 
-      ? { pubkey: params.solDepositAuthority, isSigner: true, isWritable: false }
-      : { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     { pubkey: params.reserveStake, isSigner: false, isWritable: true },
     { pubkey: params.destinationPoolAccount, isSigner: false, isWritable: true },
     { pubkey: params.managerFeeAccount, isSigner: false, isWritable: true },
@@ -951,6 +949,10 @@ static buildDepositWsolWithSessionInstruction(params: {
     { pubkey: params.poolMint, isSigner: false, isWritable: true },
     { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    // Add sol_deposit_authority or system program as placeholder
+    params.solDepositAuthority 
+      ? { pubkey: params.solDepositAuthority, isSigner: true, isWritable: false }
+      : { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     { pubkey: params.programId, isSigner: false, isWritable: false },
     { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
     { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },

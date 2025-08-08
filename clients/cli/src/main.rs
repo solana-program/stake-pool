@@ -1718,6 +1718,7 @@ fn command_deposit_wsol_with_session(
         spl_stake_pool::instruction::deposit_wsol_with_session(
             &config.stake_pool_program_id,
             &user_pubkey,
+            &user_pubkey,
             &program_signer,             // program_signer PDA
             &user_wsol_account,          // user's WSOL ATA
             &transient_wsol_pda,         // transient WSOL PDA
@@ -1739,6 +1740,7 @@ fn command_deposit_wsol_with_session(
         spl_stake_pool::instruction::deposit_wsol_with_session(
             &config.stake_pool_program_id,
             &user_pubkey,              // signer_or_session
+            &user_pubkey,              // fee_payer
             &program_signer,             // program_signer PDA
             &user_wsol_account,          // user's WSOL ATA
             &transient_wsol_pda,         // transient WSOL PDA
