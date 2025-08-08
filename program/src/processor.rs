@@ -1496,6 +1496,7 @@ impl Processor {
             system_program_ai.clone(),
             token_program_ai.clone(),
         ];
+        // Add the SOL deposit authority if it has been provided
         if let Some(auth) = sol_deposit_auth_ai {
             new_accounts.push(auth.clone());
         }

@@ -448,7 +448,7 @@ export async function depositWsolWithSession(
 
   return {
     instructions,
-    signers: [],
+    signers: [], // No signers needed for this instruction as handled by fogo-sessions
   };
 }
 

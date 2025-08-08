@@ -949,16 +949,15 @@ static buildDepositWsolWithSessionInstruction(params: {
     { pubkey: params.poolMint, isSigner: false, isWritable: true },
     { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    // Add sol_deposit_authority or system program as placeholder
-    params.solDepositAuthority 
-      ? { pubkey: params.solDepositAuthority, isSigner: true, isWritable: false }
-      : { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: params.programId, isSigner: false, isWritable: false },
-    { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
-    { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
-    { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
   ];
+
+  if (params.solDepositAuthority) {
+    keys.push({
+      pubkey: params.solDepositAuthority,
+      isSigner: true,
+      isWritable: false,
+    });
+  }
 
   // Encode the instruction data
   // This should match your Rust enum variant for DepositWsolWithSession
