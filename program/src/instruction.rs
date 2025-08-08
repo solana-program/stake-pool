@@ -760,23 +760,23 @@ pub enum StakePoolInstruction {
     ///   Deposit wrapped SOL via a Fogo session.
     ///   The WSOL account is closed and its lamports used for the deposit.
     ///
-    ///   0. `[w]` Stake Pool
-    ///   1. `[]` Stake Pool Withdraw Authority
-    ///   2. `[w]` Reserve Stake Account
-    ///   3. `[w]` User's Source wSOL Account
-    ///   4. `[w]` Owner
-    ///   5. `[w]` User's Destination Pool Token Account
-    ///   6. `[w]` Temporary wSOL Account
-    ///   7. `[w]` Manager Fee Account
-    ///   8. `[w]` Referrer Fee Account
-    ///   9. `[w]` Pool Token Mint
-    ///  10. `[]` System Program
-    ///  11. `[]` Token Program
-    ///  12. `[]` Wrapped SOL Mint
-    ///  13. `[s]` Session Signer
-    ///  14. `[]` Session Token
-    ///  15. `[]` Session Authority PDA
-    ///  16. `[]` Fogo Sessions Program
+    ///   Accounts (must match the order consumed by the processor):
+    ///   0. `[s]` Signer or Session (session PDA or the user wallet)
+    ///   1. `[s]` Fee payer (paymaster or user wallet)
+    ///   2. `[w]` Program signer PDA
+    ///   3. `[w]` User's WSOL token account (ATA)
+    ///   4. `[w]` Temporary WSOL token account (program-owned)
+    ///   5. `[]` Wrapped SOL mint (So11111111111111111111111111111111111111112)
+    ///   6. `[w]` Stake pool
+    ///   7. `[]` Stake pool withdraw authority
+    ///   8. `[w]` Reserve stake account
+    ///   9. `[w]` User's destination pool token account
+    ///  10. `[w]` Manager fee account
+    ///  11. `[w]` Referrer fee account
+    ///  12. `[w]` Pool token mint
+    ///  13. `[]` Token Program
+    ///  14. `[]` System Program
+    ///  15. `[s]` (Optional) Stake pool SOL deposit authority
     DepositWsolWithSession {
         /// amount of lamports to deposit
         lamports: u64,
