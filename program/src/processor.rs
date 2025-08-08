@@ -1293,11 +1293,6 @@ impl Processor {
         let token_program_ai            = next_account_info(&mut ai)?; // read-only
         let system_program_ai           = next_account_info(&mut ai)?; // read-only
         let sol_deposit_auth_ai         = ai.next(); // read-only
-        // let stake_pool_program_ai       = next_account_info(&mut ai)?; // read-only
-        // let stake_program_ai            = next_account_info(&mut ai)?; // read-only
-        // let clock_sysvar_ai             = next_account_info(&mut ai)?; // read-only
-        // let stake_history_sysvar_ai     = next_account_info(&mut ai)?; // read-only
-        // let rent_sysvar_ai              = next_account_info(&mut ai)?; // read-only
 
 
         // ──────────────────────────────────────────────────────────────────────
@@ -1317,19 +1312,7 @@ impl Processor {
             signer_or_session_ai,
             program_id,
         )
-        .map_err(|e| -> ProgramError {
-            use fogo_sessions_sdk::error::SessionError;
-            match e {
-                SessionError::Expired => ProgramError::from(StakePoolError::SessionExpired),
-                SessionError::UserMismatch => ProgramError::from(StakePoolError::SessionUserMismatch),
-                SessionError::UnauthorizedProgram => ProgramError::from(StakePoolError::SessionUnauthorizedProgram),
-                SessionError::MissingRequiredSignature => ProgramError::from(StakePoolError::SessionMissingRequiredSignature),
-                SessionError::ClockError => ProgramError::from(StakePoolError::SessionClockError),
-                SessionError::InvalidAccountData => ProgramError::from(StakePoolError::SessionInvalidAccountData),
-                SessionError::InvalidAccountDiscriminator => ProgramError::from(StakePoolError::SessionInvalidAccountDiscriminator),
-                SessionError::InvalidAccountVersion => ProgramError::from(StakePoolError::SessionInvalidAccountVersion),
-            }
-        })?;
+        .map_err(StakePoolError::from)?;
 
         // Verify `user_wsol_ai` is that user’s ATA for WSOL
         let expected_wsol_ata =
