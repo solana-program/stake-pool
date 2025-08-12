@@ -24,8 +24,10 @@ if (process.env.CI) {
   await $`echo "new_version=${newVersion}" >> $GITHUB_OUTPUT`;
 }
 
+// Build the package.
+await $`pnpm build`;
+
 // Publish the package.
-// This will also build the package before publishing (see prepublishOnly script).
 await $`pnpm publish --no-git-checks --tag ${tag}`;
 
 // Commit the new version.
