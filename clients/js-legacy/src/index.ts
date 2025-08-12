@@ -357,25 +357,21 @@ export async function depositSol(
 export async function depositWsolWithSession(
   connection: Connection,
   stakePoolAddress: PublicKey,
-  signerOrSession: PublicKey,  // Either the session public key or user's wallet
-  userWallet: PublicKey,        // The actual user's wallet (extracted from session or same as signer)
+  signerOrSession: PublicKey, // Either the session public key or user's wallet
+  userWallet: PublicKey, // The actual user's wallet (extracted from session or same as signer)
   lamports: number,
   destinationTokenAccount?: PublicKey,
   referrerTokenAccount?: PublicKey,
   depositAuthority?: PublicKey,
   paymaster?: PublicKey,
 ) {
-
   // Get user's WSOL ATA
-  const userWsolAccount = getAssociatedTokenAddressSync(
-    NATIVE_MINT,
-    userWallet
-  );
+  const userWsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, userWallet);
 
   // Check WSOL balance
   const tokenAccountInfo = await connection.getTokenAccountBalance(userWsolAccount, 'confirmed');
   const wsolBalance = tokenAccountInfo ? parseInt(tokenAccountInfo.value.amount) : 0;
-  
+
   if (wsolBalance < lamports) {
     throw new Error(
       `Not enough WSOL to deposit into pool. Maximum deposit amount is ${lamportsToSol(
@@ -392,26 +388,26 @@ export async function depositWsolWithSession(
 
   // Derive PDAs
   const [programSigner] = PublicKey.findProgramAddressSync(
-    [Buffer.from('fogo_session_program_signer')],  // PROGRAM_SIGNER_SEED: https://github.com/fogo-foundation/fogo-sessions/blob/8b00bdfb214c0f797d8dd22fc24f813801a8a191/packages/sessions-sdk-rs/src/token/mod.rs#L5
-    stakePoolProgramId
+    [Buffer.from('fogo_session_program_signer')], // PROGRAM_SIGNER_SEED: https://github.com/fogo-foundation/fogo-sessions/blob/8b00bdfb214c0f797d8dd22fc24f813801a8a191/packages/sessions-sdk-rs/src/token/mod.rs#L5
+    stakePoolProgramId,
   );
 
   const [transientWsolPda] = PublicKey.findProgramAddressSync(
     [Buffer.from('transient_wsol'), userWallet.toBuffer()],
-    stakePoolProgramId
+    stakePoolProgramId,
   );
 
   // Create destination token account if not specified
   if (!destinationTokenAccount) {
     const associatedAddress = getAssociatedTokenAddressSync(
-      stakePool.poolMint, 
-      userWallet  // Pool tokens go to the actual user, not the session
+      stakePool.poolMint,
+      userWallet, // Pool tokens go to the actual user, not the session
     );
     instructions.push(
       createAssociatedTokenAccountIdempotentInstruction(
-        paymaster ?? signerOrSession,  // Payer (could be session or user)
+        paymaster ?? signerOrSession, // Payer (could be session or user)
         associatedAddress,
-        userWallet,       // Owner is always the actual user
+        userWallet, // Owner is always the actual user
         stakePool.poolMint,
       ),
     );

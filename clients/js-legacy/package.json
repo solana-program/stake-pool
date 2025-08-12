@@ -1,5 +1,5 @@
 {
-  "name": "@solana/spl-stake-pool",
+  "name": "@firstset/spl-stake-pool",
   "version": "1.1.8",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
