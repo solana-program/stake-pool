@@ -1583,6 +1583,158 @@ fn command_deposit_wsol_with_session(
     Ok(())
 }
 
+fn command_withdraw_wsol_with_session(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    from: &Option<Keypair>,
+    pool_token_account: &Option<Pubkey>,
+    pool_amount: f64,
+) -> CommandResult {
+    if !config.no_update {
+        command_update(config, stake_pool_address, false, false, false)?;
+    }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
+    let pool_amount_tokens = spl_token_2022::ui_amount_to_amount(pool_amount, pool_mint.decimals);
+
+    // The signer could be either a session account or the actual user
+    let user_pubkey = from
+        .as_ref()
+        .map_or_else(|| config.fee_payer.pubkey(), |keypair| keypair.pubkey());
+
+    let pool_token_account =
+        pool_token_account.unwrap_or(get_associated_token_address_with_program_id(
+            &user_pubkey,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+        ));
+
+    let token_account = get_token_account(
+        &config.rpc_client,
+        &pool_token_account,
+        &stake_pool.pool_mint,
+    )?;
+
+    // Check pool token balance
+    if token_account.amount < pool_amount_tokens {
+        return Err(format!(
+            "Not enough pool token balance to withdraw {} pool tokens.\nMaximum withdraw amount is {} pool tokens.",
+            spl_token_2022::amount_to_ui_amount(pool_amount_tokens, pool_mint.decimals),
+            spl_token_2022::amount_to_ui_amount(token_account.amount, pool_mint.decimals)
+        )
+        .into());
+    }
+
+    // User's WSOL ATA
+    let user_wsol_account = spl_associated_token_account::get_associated_token_address(
+        &user_pubkey,
+        &spl_token::native_mint::id(),
+    );
+
+    let mut instructions: Vec<Instruction> = vec![];
+    let mut signers = vec![config.fee_payer.as_ref()];
+    let mut total_rent_free_balances: u64 = 0;
+
+    if let Some(keypair) = from.as_ref() {
+        signers.push(keypair);
+    }
+
+    // Create WSOL ATA if it doesn't exist
+    let _user_wsol_account = add_associated_token_account(
+        config,
+        &spl_token::native_mint::id(),
+        &spl_token::id(),
+        &user_pubkey,
+        &mut instructions,
+        &mut total_rent_free_balances,
+    );
+
+    // Create ephemeral transfer authority for spending pool tokens
+    let user_transfer_authority = Keypair::new();
+    signers.push(&user_transfer_authority);
+
+    // Approve spending pool tokens
+    instructions.push(
+        spl_token_2022::instruction::approve(
+            &stake_pool.token_program_id,
+            &pool_token_account,
+            &user_transfer_authority.pubkey(),
+            &user_pubkey,
+            &[],
+            pool_amount_tokens,
+        )?,
+    );
+
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&config.stake_pool_program_id, stake_pool_address)
+            .0;
+
+    // Build the withdraw_wsol_with_session instruction
+    let withdraw_instruction = if let Some(withdraw_authority) = config.funding_authority.as_ref() {
+        let expected_sol_withdraw_authority = stake_pool.sol_withdraw_authority.ok_or_else(|| {
+            "SOL withdraw authority specified in arguments but stake pool has none".to_string()
+        })?;
+        signers.push(withdraw_authority.as_ref());
+        if withdraw_authority.pubkey() != expected_sol_withdraw_authority {
+            let error = format!(
+                "Invalid withdraw authority specified, expected {}, received {}",
+                expected_sol_withdraw_authority,
+                withdraw_authority.pubkey()
+            );
+            return Err(error.into());
+        }
+        spl_stake_pool::instruction::withdraw_wsol_with_session(
+            &config.stake_pool_program_id,
+            stake_pool_address,
+            &pool_withdraw_authority,
+            &user_transfer_authority.pubkey(),
+            &pool_token_account,
+            &stake_pool.reserve_stake,
+            &user_wsol_account,
+            &stake_pool.manager_fee_account,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            Some(&withdraw_authority.pubkey()),
+            &spl_token::native_mint::id(),
+            &user_pubkey,
+            &user_pubkey,
+            &system_program::id(),
+            pool_amount_tokens,
+        )
+    } else {
+        spl_stake_pool::instruction::withdraw_wsol_with_session(
+            &config.stake_pool_program_id,
+            stake_pool_address,
+            &pool_withdraw_authority,
+            &user_transfer_authority.pubkey(),
+            &pool_token_account,
+            &stake_pool.reserve_stake,
+            &user_wsol_account,
+            &stake_pool.manager_fee_account,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+            None,
+            &spl_token::native_mint::id(),
+            &user_pubkey,
+            &user_pubkey,
+            &system_program::id(),
+            pool_amount_tokens,
+        )
+    };
+
+    instructions.push(withdraw_instruction);
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers_and_additional_fee(
+        config,
+        &instructions,
+        &signers,
+        total_rent_free_balances,
+    )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
 fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let reserve_stake_account_address = stake_pool.reserve_stake.to_string();
@@ -3094,6 +3246,44 @@ fn main() {
                     .help("Source account of funds. [default: cli config keypair]"),
             )
         )
+        .subcommand(SubCommand::with_name("withdraw-wsol-with-session")
+            .about("Withdraw wrapped SOL from the stake pool reserve in exchange for pool tokens")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            )
+            .arg(
+                Arg::with_name("amount")
+                    .index(2)
+                    .validator(is_amount)
+                    .value_name("AMOUNT")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Amount in pool tokens to withdraw"),
+            )
+            .arg(
+                Arg::with_name("from")
+                    .long("from")
+                    .validator(is_valid_signer)
+                    .value_name("KEYPAIR")
+                    .takes_value(true)
+                    .help("Source account of funds. [default: cli config keypair]"),
+            )
+            .arg(
+                Arg::with_name("pool_account")
+                    .long("pool-account")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Pool token account to withdraw from. \
+                          [default: owner's associated pool token account]"),
+            )
+        )
         .subcommand(SubCommand::with_name("list")
             .about("List stake accounts managed by this pool")
             .arg(
@@ -3642,6 +3832,13 @@ fn main() {
             let from = keypair_of(arg_matches, "from");
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             command_deposit_wsol_with_session(&config, &stake_pool_address, &from, &None, &None, amount)
+        }
+        ("withdraw-wsol-with-session", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let from = keypair_of(arg_matches, "from");
+            let pool_account = pubkey_of(arg_matches, "pool_account");
+            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            command_withdraw_wsol_with_session(&config, &stake_pool_address, &from, &pool_account, amount)
         }
         ("list", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
