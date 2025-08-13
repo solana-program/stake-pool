@@ -781,8 +781,11 @@ pub enum StakePoolInstruction {
     ///   9. `[]` Stake history sysvar
     ///  10. `[]` Stake program account
     ///  11. `[]` Token program id
-    ///  12. `[]` WSOL mint (native mint, So111…)
-    ///  13. `[s]` (Optional) Stake pool SOL withdraw authority
+    ///  12. `[s]` (Optional) Stake pool SOL withdraw authority
+    ///  13. `[]` WSOL mint (native mint, So111…)
+    ///  14. `[s, w]` Fee payer (session or wallet) for idempotent ATA creation
+    ///  15. `[]` User owner (system account that owns the WSOL ATA)
+    ///  16. `[]` System Program
     WithdrawWsolWithSession(u64),
 }
 
@@ -2512,9 +2515,12 @@ pub fn withdraw_wsol_with_session(
     manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    wsol_mint: &Pubkey,
-    pool_tokens_in: u64,
     sol_withdraw_authority: Option<&Pubkey>,
+    wsol_mint: &Pubkey,
+    fee_payer: &Pubkey,
+    user_owner: &Pubkey,
+    system_program_id: &Pubkey,
+    pool_tokens_in: u64,
 ) -> Instruction {
     // Same account order as WithdrawSol, with the destination replaced by the
     // user's WSOL token account, and with an extra readonly WSOL mint.
@@ -2531,11 +2537,14 @@ pub fn withdraw_wsol_with_session(
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(*wsol_mint, false),
     ];
     if let Some(sol_withdraw_authority) = sol_withdraw_authority {
         accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
     }
+    accounts.push(AccountMeta::new_readonly(*wsol_mint, false));
+    accounts.push(AccountMeta::new(*fee_payer, true));
+    accounts.push(AccountMeta::new_readonly(*user_owner, false));
+    accounts.push(AccountMeta::new_readonly(*system_program_id, false));
     Instruction {
         program_id: *program_id,
         accounts,

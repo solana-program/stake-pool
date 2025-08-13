@@ -36,7 +36,7 @@ use {
         rent::Rent,
         stake, system_instruction, system_program,
         sysvar::Sysvar,
-    }, spl_associated_token_account::get_associated_token_address, spl_token::{instruction as token_ix, native_mint}, spl_token_2022::{
+    }, spl_associated_token_account::get_associated_token_address, spl_token::{instruction as token_ix, native_mint, state::Account}, spl_token_2022::{
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
         state::Mint,
@@ -3268,6 +3268,120 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes `WithdrawWsolWithSession`.
+    /// Ensures the user's WSOL ATA exists (creating it if missing), delegates
+    /// to `process_withdraw_sol`, then performs `sync_native`.
+    #[inline(never)]
+fn process_withdraw_wsol_with_session(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    pool_tokens: u64,
+) -> ProgramResult {
+    // --- EXACT same order as WithdrawSol for the first 12/13 accounts ---
+    let ai = &mut accounts.iter();
+    let stake_pool_info           = next_account_info(ai)?; // 0  [w]
+    let withdraw_authority_info   = next_account_info(ai)?; // 1  []
+    let signer_or_session         = next_account_info(ai)?; // 2  [s] (user_transfer_authority)
+    let burn_from_pool_info       = next_account_info(ai)?; // 3  [w]
+    let reserve_stake_info        = next_account_info(ai)?; // 4  [w]
+    let user_wsol_ai              = next_account_info(ai)?; // 5  [w]  <-- destination
+    let manager_fee_info          = next_account_info(ai)?; // 6  [w]
+    let pool_mint_info            = next_account_info(ai)?; // 7  [w]
+    let clock_info                = next_account_info(ai)?; // 8  []
+    let stake_history_info        = next_account_info(ai)?; // 9  []
+    let stake_program_info        = next_account_info(ai)?; // 10 []
+    let token_program_info        = next_account_info(ai)?; // 11 []
+    let sol_withdraw_auth_res     = next_account_info(ai);  // 12 optional [s]
+
+    // --- Extra accounts for ATA creation / validation (AFTER the optional one) ---
+    // If you don't want on-chain creation, you can omit these and the creation block below.
+    let wsol_mint_ai              = next_account_info(ai)?; // 13 []
+    let fee_payer_ai              = next_account_info(ai)?; // 14 [s,w] payer for ATA (session or wallet)
+    let user_owner_ai             = next_account_info(ai)?; // 15 []   the user's system account (owner of ATA)
+    let system_program_ai         = next_account_info(ai)?; // 16 []
+
+    // --- Validate native mint matches ---
+    if *wsol_mint_ai.key != native_mint::id() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    // --- Validate the real user and confirm destination is their WSOL ATA ---
+    // 1) Make sure the passed owner account matches the derived user
+    let user_pubkey = Session::extract_user_from_signer_or_session(signer_or_session, program_id)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    if *user_owner_ai.key != user_pubkey {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    // 2) Make sure the destination is the user's WSOL ATA
+    let expected_ata = get_associated_token_address(&user_pubkey, &native_mint::id());
+    if expected_ata != *user_wsol_ai.key {
+        return Err(ProgramError::InvalidAccountData);
+    }
+
+    // --- Create the ATA if missing (idempotent) ---
+    if user_wsol_ai.data_is_empty() {
+        // The associated-token-program create requires these accounts:
+        //   payer, associated_token, owner, mint, system_program, token_program
+        // Ensure payer is writable + signer in your instruction metas.
+        let create_ix =
+            spl_associated_token_account::instruction::create_associated_token_account(
+                fee_payer_ai.key,          // payer
+                &user_pubkey,              // owner of ATA
+                wsol_mint_ai.key,          // native mint
+                token_program_info.key,    // token program id
+            );
+        invoke(
+            &create_ix,
+            &[
+                fee_payer_ai.clone(),
+                user_wsol_ai.clone(),
+                user_owner_ai.clone(),     // == user_pubkey as a system account
+                wsol_mint_ai.clone(),
+                system_program_ai.clone(),
+                token_program_info.clone(),
+            ],
+        )?;
+    } else {
+        // If it already exists, ensure it's a proper native token account.
+        if user_wsol_ai.owner != &spl_token::id() || user_wsol_ai.data_len() != Account::LEN {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let tok = Account::unpack(&user_wsol_ai.data.borrow())?;
+        if tok.mint != native_mint::id() || tok.is_native.is_none() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+    }
+
+    // --- Rebuild the exact account slice for the inner WithdrawSol delegate ---
+    let mut withdraw_sol_accts: Vec<AccountInfo> = vec![
+        stake_pool_info.clone(),         // 0
+        withdraw_authority_info.clone(), // 1
+        signer_or_session.clone(),       // 2
+        burn_from_pool_info.clone(),     // 3
+        reserve_stake_info.clone(),      // 4
+        user_wsol_ai.clone(),            // 5 (destination)
+        manager_fee_info.clone(),        // 6
+        pool_mint_info.clone(),          // 7
+        clock_info.clone(),              // 8
+        stake_history_info.clone(),      // 9
+        stake_program_info.clone(),      // 10
+        token_program_info.clone(),      // 11
+    ];
+    if let Ok(sol_withdraw_auth_ai) = sol_withdraw_auth_res {
+        withdraw_sol_accts.push(sol_withdraw_auth_ai.clone()); // 12 optional
+    }
+
+    // --- Delegate to core withdraw: moves lamports to `user_wsol_ai` ----------
+    Self::process_withdraw_sol(program_id, &withdraw_sol_accts, pool_tokens, None)?;
+
+    // --- Sync native so token-amount reflects the lamports --------------------
+    let sync_ix = token_ix::sync_native(token_program_info.key, user_wsol_ai.key)?;
+    // Only the token account itself is required; no authority signer needed.
+    invoke(&sync_ix, &[user_wsol_ai.clone()])?;
+
+    Ok(())
+}
+    
     /// Processes [`WithdrawSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_sol(
@@ -3275,7 +3389,6 @@ impl Processor {
         accounts: &[AccountInfo],
         pool_tokens: u64,
         minimum_lamports_out: Option<u64>,
-        dest_is_wsol: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -3291,33 +3404,6 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
-
-        // WSOL logic: if the destination is a WSOL token account, we need to do some extra checks
-        if dest_is_wsol {
-            // Basic structural checks: must be an SPL Token account for the native mint.
-            if destination_lamports_info.owner != &spl_token::id()
-                || destination_lamports_info.data_len() != spl_token::state::Account::LEN
-            {
-                return Err(ProgramError::InvalidAccountData);
-            }
-            let tok = spl_token::state::Account::unpack(&destination_lamports_info.data.borrow())?;
-            if tok.mint != native_mint::id() {
-                return Err(ProgramError::InvalidAccountData);
-            }
-            // For native accounts, `is_native` must be Some(rent_exempt_reserve).
-            if tok.is_native.is_none() {
-                // Not a "native" token account; `sync_native` would fail.
-                return Err(ProgramError::InvalidAccountData);
-            }
-
-            //(Optional hardening) Ensure it's the user's ATA for native mint:
-            let user = Session::extract_user_from_signer_or_session(user_transfer_authority_info, program_id)
-                .map_err(|_| ProgramError::InvalidAccountData)?;
-            let expected = spl_associated_token_account::get_associated_token_address(&user, &native_mint::id());
-            if expected != *destination_lamports_info.key {
-                return Err(ProgramError::InvalidAccountData);
-            }
-        }
         
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -3430,14 +3516,6 @@ impl Processor {
             stake_history_info.clone(),
             withdraw_lamports,
         )?;
-
-        // We just sent lamports to `destination_lamports_info`. If it's a WSOL
-        // token account, make the token-amount reflect the lamports.
-        if dest_is_wsol {
-            let ix = token_ix::sync_native(token_program_info.key, destination_lamports_info.key)?;
-            // Only the token account itself is required; no signer is needed.
-            invoke(&ix, &[destination_lamports_info.clone()])?;
-        }
 
         stake_pool.pool_token_supply = stake_pool
             .pool_token_supply
@@ -3890,7 +3968,7 @@ impl Processor {
             }
             StakePoolInstruction::WithdrawSol(pool_tokens) => {
                 msg!("Instruction: WithdrawSol");
-                Self::process_withdraw_sol(program_id, accounts, pool_tokens, None, false)
+                Self::process_withdraw_sol(program_id, accounts, pool_tokens, None)
             }
             StakePoolInstruction::CreateTokenMetadata { name, symbol, uri } => {
                 msg!("Instruction: CreateTokenMetadata");
@@ -3946,12 +4024,11 @@ impl Processor {
                     accounts,
                     pool_tokens_in,
                     Some(minimum_lamports_out),
-                    false,
                 )
             }
             StakePoolInstruction::WithdrawWsolWithSession(pool_tokens_in) => {
                 msg!("Instruction: WithdrawWsolWithSession");
-                Self::process_withdraw_sol(program_id, accounts, pool_tokens_in, None, true)
+                Self::process_withdraw_wsol_with_session(program_id, accounts, pool_tokens_in)
             }
         }
     }
