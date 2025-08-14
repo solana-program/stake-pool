@@ -1654,6 +1654,12 @@ fn command_withdraw_wsol_with_session(
         find_withdraw_authority_program_address(&config.stake_pool_program_id, stake_pool_address)
             .0;
 
+    // Derive the program signer PDA
+    let (program_signer, _bump) = Pubkey::find_program_address(
+        &[PROGRAM_SIGNER_SEED], // PROGRAM_SIGNER_SEED from your processor
+        &config.stake_pool_program_id,
+    );
+
     // Build the withdraw_wsol_with_session instruction
     let withdraw_instruction = if let Some(withdraw_authority) = config.funding_authority.as_ref() {
         let expected_sol_withdraw_authority = stake_pool.sol_withdraw_authority.ok_or_else(|| {
@@ -1684,6 +1690,7 @@ fn command_withdraw_wsol_with_session(
             &user_pubkey,
             &user_pubkey,
             &system_program::id(),
+            &program_signer,
             pool_amount_tokens,
         )
     } else {
@@ -1703,6 +1710,7 @@ fn command_withdraw_wsol_with_session(
             &config.fee_payer.pubkey(),
             &user_pubkey,
             &system_program::id(),
+            &program_signer,
             pool_amount_tokens,
         )
     };

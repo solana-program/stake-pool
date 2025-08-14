@@ -21,7 +21,7 @@ use {
         TRANSIENT_STAKE_SEED_PREFIX,
     }, borsh::BorshDeserialize, fogo_sessions_sdk::{
         session::Session,
-        token::{instruction::transfer_checked, PROGRAM_SIGNER_SEED},
+        token::{instruction::transfer_checked, instruction::burn, PROGRAM_SIGNER_SEED},
     }, num_traits::FromPrimitive, solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh1::try_from_slice_unchecked,
@@ -36,7 +36,7 @@ use {
         rent::Rent,
         stake, system_instruction, system_program,
         sysvar::Sysvar,
-    }, spl_associated_token_account::get_associated_token_address, spl_token::{instruction as token_ix, native_mint, state::Account}, spl_token_2022::{
+    }, spl_associated_token_account::get_associated_token_address, spl_token::{instruction as token_ix, native_mint}, spl_token_2022::{
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
         state::Mint,
@@ -3277,7 +3277,7 @@ impl Processor {
         accounts: &[AccountInfo],
         pool_tokens: u64,
     ) -> ProgramResult {
-        // --- EXACT same order as WithdrawSol for the first 12/13 accounts ---
+        // --- EXACT same order as WithdrawSol for the first 11 accounts ---
         let ai = &mut accounts.iter();
         let stake_pool_info           = next_account_info(ai)?; // 0  [w]
         let withdraw_authority_info   = next_account_info(ai)?; // 1  []
@@ -3298,10 +3298,10 @@ impl Processor {
         let fee_payer_ai              = next_account_info(ai)?; // 13 [s,w] payer for ATA (session or wallet)
         let user_owner_ai             = next_account_info(ai)?; // 14 []   the user's system account (owner of ATA)
         let system_program_ai         = next_account_info(ai)?; // 15 []
+        let program_signer_ai         = next_account_info(ai)?; // 16 [] (program signer)
 
         // Optional SOL withdraw authority (needs to be at the end since it is not always present)
         let sol_withdraw_auth_res     = next_account_info(ai);  // 16 optional [s]
-
 
         // ──────────────────────────────────────────────────────────────────────
         // 1. Basic sanity checks
@@ -3388,13 +3388,14 @@ impl Processor {
             stake_history_info.clone(),      // 9
             stake_program_info.clone(),      // 10
             token_program_info.clone(),      // 11
+            program_signer_ai.clone(),       // 12 (program signer)
         ];
         if let Ok(sol_withdraw_auth_ai) = sol_withdraw_auth_res {
             withdraw_sol_accts.push(sol_withdraw_auth_ai.clone()); // 12 optional
         }
 
         // --- Delegate to core withdraw: moves lamports to `user_wsol_ai` ----------
-        Self::process_withdraw_sol(program_id, &withdraw_sol_accts, pool_tokens, None)?;
+        Self::process_withdraw_sol(program_id, &withdraw_sol_accts, pool_tokens, None, true)?;
 
         // --- Sync native so token-amount reflects the lamports --------------------
         let sync_ix = token_ix::sync_native(token_program_info.key, user_wsol_ai.key)?;
@@ -3411,6 +3412,7 @@ impl Processor {
         accounts: &[AccountInfo],
         pool_tokens: u64,
         minimum_lamports_out: Option<u64>,
+        is_wsol_path: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -3425,6 +3427,7 @@ impl Processor {
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let maybe_program_signer_ai = next_account_info(account_info_iter); // might not be present in the standard SOL path
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
         
         check_account_owner(stake_pool_info, program_id)?;
@@ -3507,13 +3510,40 @@ impl Processor {
             return Err(StakePoolError::WrongStakeStake.into());
         };
 
-        Self::token_burn(
-            token_program_info.clone(),
-            burn_from_pool_info.clone(),
-            pool_mint_info.clone(),
-            user_transfer_authority_info.clone(),
-            pool_tokens_burnt,
-        )?;
+        // Conditional burn based on whether the withdrawal is from the WSOL path or the standard SOL path
+        if is_wsol_path && maybe_program_signer_ai.is_ok() {
+            // Determine PDA bump for `program_signer_ai` (= program signer)
+            let (expected_pda, pda_bump) =
+                Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], program_id);
+
+            let program_signer_ai = maybe_program_signer_ai.unwrap();
+            if expected_pda != *program_signer_ai.key {
+                msg!("program_signer_ai must be the program-signer PDA");
+                return Err(ProgramError::InvalidSeeds);
+            }
+            let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[pda_bump]];
+            //checked burn with PDA
+            let burn_ix = burn(
+                token_program_info.key,
+                burn_from_pool_info.key,
+                pool_mint_info.key,
+                user_transfer_authority_info.key,
+                Some(program_signer_ai.key),
+                pool_tokens_burnt,
+            )?;
+            // The *payer* (`signer_or_session_ai`) already signed the outer tx,
+            // but the NEW account (a PDA) must also appear as a signer – therefore
+            // we invoke with `invoke_signed` and pass `program_signer_seeds`.
+            invoke_signed(&burn_ix, &[burn_from_pool_info.clone(), pool_mint_info.clone(), user_transfer_authority_info.clone(), program_signer_ai.clone()], &[program_signer_seeds])?;
+        } else {
+            Self::token_burn(
+                token_program_info.clone(),
+                burn_from_pool_info.clone(),
+                pool_mint_info.clone(),
+                user_transfer_authority_info.clone(),
+                pool_tokens_burnt,
+            )?;
+        }
 
         if pool_tokens_fee > 0 {
             Self::token_transfer(
@@ -3990,7 +4020,7 @@ impl Processor {
             }
             StakePoolInstruction::WithdrawSol(pool_tokens) => {
                 msg!("Instruction: WithdrawSol");
-                Self::process_withdraw_sol(program_id, accounts, pool_tokens, None)
+                Self::process_withdraw_sol(program_id, accounts, pool_tokens, None, false)
             }
             StakePoolInstruction::CreateTokenMetadata { name, symbol, uri } => {
                 msg!("Instruction: CreateTokenMetadata");
@@ -4046,6 +4076,7 @@ impl Processor {
                     accounts,
                     pool_tokens_in,
                     Some(minimum_lamports_out),
+                    false,
                 )
             }
             StakePoolInstruction::WithdrawWsolWithSession(pool_tokens_in) => {

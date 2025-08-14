@@ -786,6 +786,7 @@ pub enum StakePoolInstruction {
     ///  14. `[s, w]` Fee payer (session or wallet) for idempotent ATA creation
     ///  15. `[]` User owner (system account that owns the WSOL ATA)
     ///  16. `[]` System Program
+    ///  17. `[w]` Program signer PDA (only present in WSOL path)
     WithdrawWsolWithSession(u64),
 }
 
@@ -2520,6 +2521,7 @@ pub fn withdraw_wsol_with_session(
     fee_payer: &Pubkey,
     user_owner: &Pubkey,
     system_program_id: &Pubkey,
+    program_signer: &Pubkey,
     pool_tokens_in: u64,
 ) -> Instruction {
     // Same account order as WithdrawSol, with the destination replaced by the
@@ -2543,12 +2545,13 @@ pub fn withdraw_wsol_with_session(
     accounts.push(AccountMeta::new(*fee_payer, true));
     accounts.push(AccountMeta::new_readonly(*user_owner, false));
     accounts.push(AccountMeta::new_readonly(*system_program_id, false));
+    accounts.push(AccountMeta::new(*program_signer, false));
 
     // Optional SOL withdraw authority (needs to be at the end)
     if let Some(sol_withdraw_authority) = sol_withdraw_authority {
         accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
     }
-    
+
     Instruction {
         program_id: *program_id,
         accounts,
