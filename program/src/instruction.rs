@@ -2538,13 +2538,17 @@ pub fn withdraw_wsol_with_session(
         AccountMeta::new_readonly(stake::program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
-    if let Some(sol_withdraw_authority) = sol_withdraw_authority {
-        accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
-    }
+
     accounts.push(AccountMeta::new_readonly(*wsol_mint, false));
     accounts.push(AccountMeta::new(*fee_payer, true));
     accounts.push(AccountMeta::new_readonly(*user_owner, false));
     accounts.push(AccountMeta::new_readonly(*system_program_id, false));
+
+    // Optional SOL withdraw authority (needs to be at the end)
+    if let Some(sol_withdraw_authority) = sol_withdraw_authority {
+        accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
+    }
+    
     Instruction {
         program_id: *program_id,
         accounts,
