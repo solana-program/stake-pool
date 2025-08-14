@@ -382,6 +382,7 @@ export type WithdrawWsolWithSessionParams = {
   wsolMint: PublicKey;
   feePayer: PublicKey;
   userOwner: PublicKey;
+  programSigner: PublicKey;
   poolTokens: number;
 };
 
@@ -1113,7 +1114,7 @@ export class StakePoolInstruction {
     const keys = [
       { pubkey: params.stakePool, isSigner: false, isWritable: true },
       { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
-      { pubkey: params.userTransferAuthority, isSigner: true, isWritable: false },
+      { pubkey: params.userTransferAuthority, isSigner: true, isWritable: true },
       { pubkey: params.poolTokensFrom, isSigner: false, isWritable: true },
       { pubkey: params.reserveStake, isSigner: false, isWritable: true },
       { pubkey: params.userWsolAccount, isSigner: false, isWritable: true },
@@ -1125,6 +1126,15 @@ export class StakePoolInstruction {
       { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
     ];
 
+    keys.push(
+      { pubkey: params.wsolMint, isSigner: false, isWritable: false },
+      { pubkey: params.feePayer, isSigner: true, isWritable: true },
+      { pubkey: params.userOwner, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: params.programSigner, isSigner: false, isWritable: true },
+    );
+
+    // Optional SOL withdraw authority (needs to be at the end since it is not always present)
     if (params.solWithdrawAuthority) {
       keys.push({
         pubkey: params.solWithdrawAuthority,
@@ -1132,13 +1142,6 @@ export class StakePoolInstruction {
         isWritable: false,
       });
     }
-
-    keys.push(
-      { pubkey: params.wsolMint, isSigner: false, isWritable: false },
-      { pubkey: params.feePayer, isSigner: true, isWritable: true },
-      { pubkey: params.userOwner, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    );
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawWsolWithSession;
     const data = encodeData(type, { poolTokens: params.poolTokens });

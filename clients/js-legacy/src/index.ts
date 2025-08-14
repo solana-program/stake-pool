@@ -496,19 +496,25 @@ export async function withdrawWsolWithSession(
     ),
   );
 
-  // Create ephemeral transfer authority for spending pool tokens
-  const userTransferAuthority = Keypair.generate();
-  signers.push(userTransferAuthority);
-
-  // Approve spending pool tokens
-  instructions.push(
-    createApproveInstruction(
-      poolTokenAccount,
-      userTransferAuthority.publicKey,
-      userWallet, // The actual user needs to approve
-      poolTokensLamports,
-    ),
+  // Derive the program signer PDA
+  const [programSigner] = PublicKey.findProgramAddressSync(
+    [Buffer.from('fogo_session_program_signer')], // PROGRAM_SIGNER_SEED: https://github.com/fogo-foundation/fogo-sessions/blob/8b00bdfb214c0f797d8dd22fc24f813801a8a191/packages/sessions-sdk-rs/src/token/mod.rs#L5
+    stakePoolProgramId,
   );
+
+  // // Create ephemeral transfer authority for spending pool tokens
+  // const userTransferAuthority = Keypair.generate();
+  // signers.push(userTransferAuthority);
+
+  // // Approve spending pool tokens
+  // instructions.push(
+  //   createApproveInstruction(
+  //     poolTokenAccount,
+  //     userTransferAuthority.publicKey,
+  //     userWallet, // The actual user needs to approve
+  //     poolTokensLamports,
+  //   ),
+  // );
 
   const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
     stakePoolProgramId,
@@ -521,7 +527,8 @@ export async function withdrawWsolWithSession(
       programId: stakePoolProgramId,
       stakePool: stakePoolAddress,
       withdrawAuthority,
-      userTransferAuthority: userTransferAuthority.publicKey,
+      //userTransferAuthority: userTransferAuthority.publicKey,
+      userTransferAuthority: signerOrSession,
       poolTokensFrom: poolTokenAccount,
       reserveStake: stakePool.reserveStake,
       userWsolAccount,
@@ -532,6 +539,7 @@ export async function withdrawWsolWithSession(
       wsolMint: NATIVE_MINT,
       feePayer: paymaster ?? signerOrSession,
       userOwner: userWallet,
+      programSigner,
       poolTokens: poolTokensLamports,
     }),
   );
