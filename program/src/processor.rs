@@ -3291,34 +3291,49 @@ fn process_withdraw_wsol_with_session(
     let stake_history_info        = next_account_info(ai)?; // 9  []
     let stake_program_info        = next_account_info(ai)?; // 10 []
     let token_program_info        = next_account_info(ai)?; // 11 []
-    let sol_withdraw_auth_res     = next_account_info(ai);  // 12 optional [s]
 
     // --- Extra accounts for ATA creation / validation (AFTER the optional one) ---
     // If you don't want on-chain creation, you can omit these and the creation block below.
-    let wsol_mint_ai              = next_account_info(ai)?; // 13 []
-    let fee_payer_ai              = next_account_info(ai)?; // 14 [s,w] payer for ATA (session or wallet)
-    let user_owner_ai             = next_account_info(ai)?; // 15 []   the user's system account (owner of ATA)
-    let system_program_ai         = next_account_info(ai)?; // 16 []
+    let wsol_mint_ai              = next_account_info(ai)?; // 12 []
+    let fee_payer_ai              = next_account_info(ai)?; // 13 [s,w] payer for ATA (session or wallet)
+    let user_owner_ai             = next_account_info(ai)?; // 14 []   the user's system account (owner of ATA)
+    let system_program_ai         = next_account_info(ai)?; // 15 []
 
-    // --- Validate native mint matches ---
+    // Optional SOL withdraw authority (needs to be at the end since it is not always present)
+    let sol_withdraw_auth_res     = next_account_info(ai);  // 16 optional [s]
+
+
+    // ──────────────────────────────────────────────────────────────────────
+    // 1. Basic sanity checks
+    // ──────────────────────────────────────────────────────────────────────
+
+    // Check that the WSOL mint is the native mint (So11111111111111111111111111111111111111112)
     if *wsol_mint_ai.key != native_mint::id() {
+        msg!("WSOL mint: {:?}", wsol_mint_ai.key);
+        msg!("native mint: {:?}", native_mint::id());
+        msg!("WSOL mint must be the wrapped-SOL mint (So111…)");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    // --- Validate the real user and confirm destination is their WSOL ATA ---
-    // 1) Make sure the passed owner account matches the derived user
-    let user_pubkey = Session::extract_user_from_signer_or_session(signer_or_session, program_id)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    if *user_owner_ai.key != user_pubkey {
-        return Err(ProgramError::InvalidAccountData);
-    }
-    // 2) Make sure the destination is the user's WSOL ATA
-    let expected_ata = get_associated_token_address(&user_pubkey, &native_mint::id());
-    if expected_ata != *user_wsol_ai.key {
+    // Who is the *real* user?
+    let user_pubkey = Session::extract_user_from_signer_or_session(
+        signer_or_session,
+        program_id,
+    )
+    .map_err(StakePoolError::from)?;
+
+    // Verify `user_wsol_ai` is that user’s ATA for WSOL
+    let expected_wsol_ata =
+        get_associated_token_address(&user_pubkey, wsol_mint_ai.key);
+    if expected_wsol_ata != *user_wsol_ai.key{
+        msg!("user_wsol_account is not the user's ATA for WSOL");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    // --- Create the ATA if missing (idempotent) ---
+    // ──────────────────────────────────────────────────────────────────────
+    // 2. Create the ATA if missing (idempotent)
+    // ──────────────────────────────────────────────────────────────────────
+
     if user_wsol_ai.data_is_empty() {
         // The associated-token-program create requires these accounts:
         //   payer, associated_token, owner, mint, system_program, token_program
@@ -3342,15 +3357,22 @@ fn process_withdraw_wsol_with_session(
             ],
         )?;
     } else {
-        // If it already exists, ensure it's a proper native token account.
-        if user_wsol_ai.owner != &spl_token::id() || user_wsol_ai.data_len() != Account::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let tok = Account::unpack(&user_wsol_ai.data.borrow())?;
-        if tok.mint != native_mint::id() || tok.is_native.is_none() {
+        // Account exists, verify it's valid
+        let token_account = spl_token::state::Account::unpack(&user_wsol_ai.data.borrow())?;
+        if token_account.mint != *wsol_mint_ai.key || 
+        token_account.owner != user_pubkey {
+            msg!("Account already exists, but is invalid");
+            msg!("token_account.mint: {:?}", token_account.mint);
+            msg!("wsol_mint_ai.key: {:?}", wsol_mint_ai.key);
+            msg!("token_account.owner: {:?}", token_account.owner);
+            msg!("user_pubkey: {:?}", user_pubkey);
             return Err(ProgramError::InvalidAccountData);
         }
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // 3. Process the withdrawal
+    // ──────────────────────────────────────────────────────────────────────
 
     // --- Rebuild the exact account slice for the inner WithdrawSol delegate ---
     let mut withdraw_sol_accts: Vec<AccountInfo> = vec![
