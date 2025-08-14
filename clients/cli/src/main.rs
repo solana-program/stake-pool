@@ -1650,22 +1650,6 @@ fn command_withdraw_wsol_with_session(
         &mut total_rent_free_balances,
     );
 
-    // Create ephemeral transfer authority for spending pool tokens
-    let user_transfer_authority = Keypair::new();
-    signers.push(&user_transfer_authority);
-
-    // Approve spending pool tokens
-    instructions.push(
-        spl_token_2022::instruction::approve(
-            &stake_pool.token_program_id,
-            &pool_token_account,
-            &user_transfer_authority.pubkey(),
-            &user_pubkey,
-            &[],
-            pool_amount_tokens,
-        )?,
-    );
-
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&config.stake_pool_program_id, stake_pool_address)
             .0;
@@ -1688,7 +1672,7 @@ fn command_withdraw_wsol_with_session(
             &config.stake_pool_program_id,
             stake_pool_address,
             &pool_withdraw_authority,
-            &user_transfer_authority.pubkey(),
+            &user_pubkey,
             &pool_token_account,
             &stake_pool.reserve_stake,
             &user_wsol_account,
@@ -1707,7 +1691,7 @@ fn command_withdraw_wsol_with_session(
             &config.stake_pool_program_id,
             stake_pool_address,
             &pool_withdraw_authority,
-            &user_transfer_authority.pubkey(),
+            &user_pubkey,
             &pool_token_account,
             &stake_pool.reserve_stake,
             &user_wsol_account,
@@ -1716,7 +1700,7 @@ fn command_withdraw_wsol_with_session(
             &stake_pool.token_program_id,
             None,
             &spl_token::native_mint::id(),
-            &user_pubkey,
+            &config.fee_payer.pubkey(),
             &user_pubkey,
             &system_program::id(),
             pool_amount_tokens,
