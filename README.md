@@ -31,3 +31,14 @@ pnpm run build
 ```
 
 For local development, you need to import it as a dependency like this: `"@solana/spl-stake-pool": "file:../stake-pool-v2/clients/js-legacy",`
+
+## CLI
+
+```
+cd clients/cli
+cargo install --path . --locked
+# deposit with session
+spl-stake-pool --url https://testnet.fogo.io --program-id SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud deposit-wsol-with-session 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9 0.1
+# withdraw with session
+spl-stake-pool --url https://testnet.fogo.io --program-id SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud withdraw-wsol-with-session 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9 0.1
+```

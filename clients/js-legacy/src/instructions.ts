@@ -39,7 +39,8 @@ export type StakePoolInstructionType =
   | 'Redelegate'
   | 'AddValidatorToPool'
   | 'RemoveValidatorFromPool'
-  | 'DepositWsolWithSession';
+  | 'DepositWsolWithSession'
+  | 'WithdrawWsolWithSession';
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
@@ -214,6 +215,13 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
       BufferLayout.ns64('lamports'),
     ]),
   },
+  WithdrawWsolWithSession: {
+    index: 28,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.ns64('poolTokens'),
+    ]),
+  },
 });
 
 /**
@@ -353,6 +361,28 @@ export type WithdrawSolParams = {
   solWithdrawAuthority?: PublicKey | undefined;
   managerFeeAccount: PublicKey;
   poolMint: PublicKey;
+  poolTokens: number;
+};
+
+/**
+ * Withdraw WSOL with session instruction params
+ */
+export type WithdrawWsolWithSessionParams = {
+  programId: PublicKey;
+  stakePool: PublicKey;
+  withdrawAuthority: PublicKey;
+  userTransferAuthority: PublicKey;
+  poolTokensFrom: PublicKey;
+  reserveStake: PublicKey;
+  userWsolAccount: PublicKey;
+  managerFeeAccount: PublicKey;
+  poolMint: PublicKey;
+  tokenProgramId: PublicKey;
+  solWithdrawAuthority?: PublicKey;
+  wsolMint: PublicKey;
+  feePayer: PublicKey;
+  userOwner: PublicKey;
+  programSigner: PublicKey;
   poolTokens: number;
 };
 
@@ -1073,6 +1103,52 @@ export class StakePoolInstruction {
     return new TransactionInstruction({
       programId: programId ?? STAKE_POOL_PROGRAM_ID,
       keys,
+      data,
+    });
+  }
+
+  /**
+   * Helper function to build the withdraw_wsol_with_session instruction
+   */
+  static buildWithdrawWsolWithSessionInstruction(params: WithdrawWsolWithSessionParams): TransactionInstruction {
+    const keys = [
+      { pubkey: params.stakePool, isSigner: false, isWritable: true },
+      { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: params.userTransferAuthority, isSigner: true, isWritable: true },
+      { pubkey: params.poolTokensFrom, isSigner: false, isWritable: true },
+      { pubkey: params.reserveStake, isSigner: false, isWritable: true },
+      { pubkey: params.userWsolAccount, isSigner: false, isWritable: true },
+      { pubkey: params.managerFeeAccount, isSigner: false, isWritable: true },
+      { pubkey: params.poolMint, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
+    ];
+
+    keys.push(
+      { pubkey: params.wsolMint, isSigner: false, isWritable: false },
+      { pubkey: params.feePayer, isSigner: true, isWritable: true },
+      { pubkey: params.userOwner, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: params.programSigner, isSigner: false, isWritable: true },
+    );
+
+    // Optional SOL withdraw authority (needs to be at the end since it is not always present)
+    if (params.solWithdrawAuthority) {
+      keys.push({
+        pubkey: params.solWithdrawAuthority,
+        isSigner: true,
+        isWritable: false,
+      });
+    }
+
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawWsolWithSession;
+    const data = encodeData(type, { poolTokens: params.poolTokens });
+
+    return new TransactionInstruction({
+      keys,
+      programId: params.programId,
       data,
     });
   }

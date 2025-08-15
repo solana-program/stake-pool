@@ -449,6 +449,108 @@ export async function depositWsolWithSession(
 }
 
 /**
+ * Creates instructions required to withdraw WSOL from a stake pool using sessions.
+ */
+export async function withdrawWsolWithSession(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  signerOrSession: PublicKey, // Either the session public key or user's wallet
+  userWallet: PublicKey, // The actual user's wallet (extracted from session or same as signer)
+  poolTokens: number,
+  poolTokenAccount?: PublicKey,
+  solWithdrawAuthority?: PublicKey,
+  paymaster?: PublicKey,
+) {
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress);
+  const stakePoolProgramId = getStakePoolProgramId(connection.rpcEndpoint);
+  const stakePool = stakePoolAccount.account.data;
+
+  // Default pool token account to user's associated token account
+  if (!poolTokenAccount) {
+    poolTokenAccount = getAssociatedTokenAddressSync(stakePool.poolMint, userWallet);
+  }
+
+  // Check pool token balance
+  const tokenAccount = await getAccount(connection, poolTokenAccount);
+  const poolTokensLamports = solToLamports(poolTokens);
+  
+  if (tokenAccount.amount < poolTokensLamports) {
+    throw new Error(
+      `Not enough pool token balance to withdraw ${poolTokens} pool tokens.\nMaximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
+    );
+  }
+
+  // User's WSOL ATA
+  const userWsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, userWallet);
+
+  const instructions: TransactionInstruction[] = [];
+  const signers: Signer[] = [];
+
+  // Create WSOL ATA if it doesn't exist
+  instructions.push(
+    createAssociatedTokenAccountIdempotentInstruction(
+      paymaster ?? signerOrSession, // Payer (could be session or user)
+      userWsolAccount,
+      userWallet, // Owner is always the actual user
+      NATIVE_MINT,
+    ),
+  );
+
+  // Derive the program signer PDA
+  const [programSigner] = PublicKey.findProgramAddressSync(
+    [Buffer.from('fogo_session_program_signer')], // PROGRAM_SIGNER_SEED: https://github.com/fogo-foundation/fogo-sessions/blob/8b00bdfb214c0f797d8dd22fc24f813801a8a191/packages/sessions-sdk-rs/src/token/mod.rs#L5
+    stakePoolProgramId,
+  );
+
+  // // Create ephemeral transfer authority for spending pool tokens
+  // const userTransferAuthority = Keypair.generate();
+  // signers.push(userTransferAuthority);
+
+  // // Approve spending pool tokens
+  // instructions.push(
+  //   createApproveInstruction(
+  //     poolTokenAccount,
+  //     userTransferAuthority.publicKey,
+  //     userWallet, // The actual user needs to approve
+  //     poolTokensLamports,
+  //   ),
+  // );
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    stakePoolProgramId,
+    stakePoolAddress,
+  );
+
+  // Build the withdraw_wsol_with_session instruction
+  instructions.push(
+    StakePoolInstruction.buildWithdrawWsolWithSessionInstruction({
+      programId: stakePoolProgramId,
+      stakePool: stakePoolAddress,
+      withdrawAuthority,
+      //userTransferAuthority: userTransferAuthority.publicKey,
+      userTransferAuthority: signerOrSession,
+      poolTokensFrom: poolTokenAccount,
+      reserveStake: stakePool.reserveStake,
+      userWsolAccount,
+      managerFeeAccount: stakePool.managerFeeAccount,
+      poolMint: stakePool.poolMint,
+      tokenProgramId: TOKEN_PROGRAM_ID,
+      solWithdrawAuthority,
+      wsolMint: NATIVE_MINT,
+      feePayer: paymaster ?? signerOrSession,
+      userOwner: userWallet,
+      programSigner,
+      poolTokens: poolTokensLamports,
+    }),
+  );
+
+  return {
+    instructions,
+    signers,
+  };
+}
+
+/**
  * Creates instructions required to withdraw stake from a stake pool.
  */
 export async function withdrawStake(

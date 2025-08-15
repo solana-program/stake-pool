@@ -762,6 +762,32 @@ pub enum StakePoolInstruction {
         /// amount of lamports to deposit
         lamports: u64,
     },
+
+    /// Withdraw WSOL directly to the user's WSOL token account (native mint ATA),
+    /// using SOL from the reserve. Burns pool tokens at the same price/fees as
+    /// `WithdrawSol`, then unwraps to WSOL in-place by `sync_native`.
+    ///
+    /// Accounts (similar to `WithdrawSol`, with destination replaced):
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[s]` User transfer authority, for pool token account
+    ///   3. `[w]` User account to burn pool tokens
+    ///   4. `[w]` Reserve stake account, to withdraw SOL
+    ///   5. `[w]` User WSOL token account (ATA for native mint, So111...); will
+    ///           receive lamports and be `sync_native`-ed to reflect WSOL
+    ///   6. `[w]` Account to receive pool fee tokens
+    ///   7. `[w]` Pool token mint account
+    ///   8. `[]` Clock sysvar
+    ///   9. `[]` Stake history sysvar
+    ///  10. `[]` Stake program account
+    ///  11. `[]` Token program id
+    ///  12. `[s]` (Optional) Stake pool SOL withdraw authority
+    ///  13. `[]` WSOL mint (native mint, So111…)
+    ///  14. `[s, w]` Fee payer (session or wallet) for idempotent ATA creation
+    ///  15. `[]` User owner (system account that owns the WSOL ATA)
+    ///  16. `[]` System Program
+    ///  17. `[w]` Program signer PDA (only present in WSOL path)
+    WithdrawWsolWithSession(u64),
 }
 
 /// Creates an `Initialize` instruction.
@@ -2476,6 +2502,64 @@ pub fn withdraw_sol(
         pool_tokens_in,
         None,
     )
+}
+
+/// Creates instruction required to withdraw WSOL directly to the user's WSOL ATA.
+pub fn withdraw_wsol_with_session(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    pool_tokens_from: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    user_wsol_account: &Pubkey,
+    manager_fee_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    sol_withdraw_authority: Option<&Pubkey>,
+    wsol_mint: &Pubkey,
+    fee_payer: &Pubkey,
+    user_owner: &Pubkey,
+    system_program_id: &Pubkey,
+    program_signer: &Pubkey,
+    pool_tokens_in: u64,
+) -> Instruction {
+    // Same account order as WithdrawSol, with the destination replaced by the
+    // user's WSOL token account, and with an extra readonly WSOL mint.
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new_readonly(*user_transfer_authority, true),
+        AccountMeta::new(*pool_tokens_from, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*user_wsol_account, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+
+    accounts.push(AccountMeta::new_readonly(*wsol_mint, false));
+    accounts.push(AccountMeta::new(*fee_payer, true));
+    accounts.push(AccountMeta::new_readonly(*user_owner, false));
+    accounts.push(AccountMeta::new_readonly(*system_program_id, false));
+    accounts.push(AccountMeta::new(*program_signer, false));
+
+    // Optional SOL withdraw authority (needs to be at the end)
+    if let Some(sol_withdraw_authority) = sol_withdraw_authority {
+        accounts.push(AccountMeta::new_readonly(*sol_withdraw_authority, true));
+    }
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&StakePoolInstruction::WithdrawWsolWithSession(
+            pool_tokens_in,
+        ))
+        .unwrap(),
+    }
 }
 
 /// Creates instruction required to withdraw SOL directly from a stake pool with
