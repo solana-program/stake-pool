@@ -53,6 +53,8 @@ async def rebalance(
     stake_pool_address: Pubkey,
     staker: Keypair,
     retained_reserve_amount: float,
+    retained_reserve_percent: float,
+    dry_run: bool = False,
 ):
     async_client = await get_client(endpoint)
 
@@ -76,7 +78,13 @@ async def rebalance(
 
     rent_resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
     stake_rent_exemption = rent_resp.value
-    retained_reserve_lamports = int(retained_reserve_amount * LAMPORTS_PER_SOL)
+    retained_reserve_amount_lamports = int(retained_reserve_amount * LAMPORTS_PER_SOL)
+    retained_reserve_percentage_lamports = int(
+        retained_reserve_percent * stake_pool.total_lamports
+    )
+    retained_reserve_lamports = max(
+        retained_reserve_amount_lamports, retained_reserve_percentage_lamports
+    )
 
     val_resp = await async_client.get_account_info(
         stake_pool.validator_list, commitment=Confirmed
@@ -88,7 +96,14 @@ async def rebalance(
     print(f"* {stake_pool.total_lamports} total lamports")
     num_validators = len(validator_list.validators)
     print(f"* {num_validators} validators")
-    print(f"* Retaining {retained_reserve_lamports} lamports in the reserve")
+    retained_reserve_lamports_set_by = (
+        "set by the reserve_amount option"
+        if retained_reserve_amount_lamports > retained_reserve_percentage_lamports
+        else "set by the reserve_percent option"
+    )
+    print(
+        f"* Retaining {float(retained_reserve_lamports / LAMPORTS_PER_SOL):.2f} SOLs ({retained_reserve_lamports} lamports) in the reserve ({retained_reserve_lamports_set_by})"
+    )
     lamports_per_validator = (
         stake_pool.total_lamports - retained_reserve_lamports
     ) // num_validators
@@ -162,10 +177,13 @@ increase of {lamports_to_increase} less than the minimum of {MINIMUM_ACTIVE_STAK
                     f"{validator.vote_account_address}: already at {lamports_per_validator}"
                 )
 
-    print("Executing strategy")
-    await asyncio.gather(*futures)
-    print("Done")
-    await async_client.close()
+    if dry_run:
+        print("Dry-run mode enabled, the execution is skipped")
+    else:
+        print("Executing strategy")
+        await asyncio.gather(*futures)
+        print("Done")
+        await async_client.close()
 
 
 def keypair_from_file(keyfile_name: str) -> Keypair:
@@ -182,7 +200,12 @@ async def get_epoch_progress(async_client: AsyncClient) -> tuple[int, float]:
 
 
 async def service_mode(
-    endpoint: str, stake_pool_address: Pubkey, staker: Keypair, reserve_amount: float
+    endpoint: str,
+    stake_pool_address: Pubkey,
+    staker: Keypair,
+    reserve_amount: float,
+    reserve_percent: float,
+    dry_run: bool = False,
 ):
     async_client = await get_client(endpoint)
     current_epoch = None
@@ -205,7 +228,14 @@ async def service_mode(
 
             if progress >= 0.95 and not rebalanced_in_current_epoch:
                 print(f"Epoch {epoch} is {progress:.2%} complete - starting rebalance")
-                await rebalance(endpoint, stake_pool_address, staker, reserve_amount)
+                await rebalance(
+                    endpoint,
+                    stake_pool_address,
+                    staker,
+                    reserve_amount,
+                    reserve_percent,
+                    dry_run,
+                )
                 rebalanced_in_current_epoch = True
                 print(f"Rebalance completed for epoch {epoch}")
 
@@ -234,10 +264,18 @@ if __name__ == "__main__":
         help="Staker for the stake pool, given by a keypair file, e.g. staker.json",
     )
     parser.add_argument(
-        "reserve_amount",
+        "--reserve_amount",
         metavar="RESERVE_AMOUNT",
         type=float,
+        default=0,
         help="Amount of SOL to keep in the reserve, e.g. 10.5",
+    )
+    parser.add_argument(
+        "--reserve_percent",
+        metavar="RESERVE_PERCENT",
+        type=float,
+        default=0,
+        help="Percentage of the total SOLs in the pool to keep in the reserve, e.g. 0.1 (means 10%%). Note that the bot reserves max(reserve_amount, reserve_percent * total).",
     )
     parser.add_argument(
         "--endpoint",
@@ -251,19 +289,42 @@ if __name__ == "__main__":
         action="store_true",
         help="Run in service mode with epoch-based periodic rebalancing",
     )
+    parser.add_argument(
+        "--dry_run",
+        action="store_true",
+        help="Dry run mode that skips the actual executions",
+    )
 
     args = parser.parse_args()
     stake_pool = Pubkey.from_string(args.stake_pool)
     staker = keypair_from_file(args.staker)
     print(f"Stake pool: {stake_pool}")
     print(f"Staker public key: {staker.pubkey()}")
-    print(f"Amount to leave in the reserve: {args.reserve_amount} SOL")
+    print(
+        f"Amount to leave in the reserve: max({args.reserve_amount} SOL, {args.reserve_percent:.1%} of the total)"
+    )
 
     if args.service:
         print("Running in service mode")
         asyncio.run(
-            service_mode(args.endpoint, stake_pool, staker, args.reserve_amount)
+            service_mode(
+                args.endpoint,
+                stake_pool,
+                staker,
+                args.reserve_amount,
+                args.reserve_percent,
+                args.dry_run,
+            )
         )
     else:
         print("Running one-time rebalance")
-        asyncio.run(rebalance(args.endpoint, stake_pool, staker, args.reserve_amount))
+        asyncio.run(
+            rebalance(
+                args.endpoint,
+                stake_pool,
+                staker,
+                args.reserve_amount,
+                args.reserve_percent,
+                args.dry_run,
+            )
+        )
