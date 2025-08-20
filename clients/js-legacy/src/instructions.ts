@@ -1110,7 +1110,9 @@ export class StakePoolInstruction {
   /**
    * Helper function to build the withdraw_wsol_with_session instruction
    */
-  static buildWithdrawWsolWithSessionInstruction(params: WithdrawWsolWithSessionParams): TransactionInstruction {
+  static buildWithdrawWsolWithSessionInstruction(
+    params: WithdrawWsolWithSessionParams,
+  ): TransactionInstruction {
     const keys = [
       { pubkey: params.stakePool, isSigner: false, isWritable: true },
       { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },

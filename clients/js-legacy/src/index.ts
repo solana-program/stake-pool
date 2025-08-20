@@ -473,7 +473,7 @@ export async function withdrawWsolWithSession(
   // Check pool token balance
   const tokenAccount = await getAccount(connection, poolTokenAccount);
   const poolTokensLamports = solToLamports(poolTokens);
-  
+
   if (tokenAccount.amount < poolTokensLamports) {
     throw new Error(
       `Not enough pool token balance to withdraw ${poolTokens} pool tokens.\nMaximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
