@@ -903,7 +903,6 @@ fn command_increase_validator_stake(
     // Check if transient stake is in use
     if is_transient_stake_in_use(validator_stake_info) {
         if allow_additional_on_transient_busy {
-            println!("Transient stake account is in use. Attempting to use additional validator stake with ephemeral account...");
             return command_increase_additional_validator_stake(
                 config,
                 stake_pool_address,
@@ -964,7 +963,6 @@ fn command_decrease_validator_stake(
     // Check if transient stake is in use
     if is_transient_stake_in_use(validator_stake_info) {
         if allow_additional_on_transient_busy {
-            println!("Transient stake account is in use. Attempting to use additional validator stake with ephemeral account...");
             return command_decrease_additional_validator_stake(
                 config,
                 stake_pool_address,
