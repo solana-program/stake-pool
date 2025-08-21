@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use {
-    borsh::BorshDeserialize,
     solana_program::{
         borsh1::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
