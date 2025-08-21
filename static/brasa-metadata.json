@@ -1,6 +1,6 @@
 {
-  "name": "FOGO LST Token",
+  "name": "Staked FOGO",
   "symbol": "stFOGO",
-  "description": "Call me by fire",
+  "description": "Staked FOGO, by Brasa Finance",
   "image": "https://raw.githubusercontent.com/Firstset/stake-pool-v2/refs/heads/wsol-adaptor/static/brasa.png"
 }
