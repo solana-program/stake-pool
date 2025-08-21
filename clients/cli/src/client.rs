@@ -217,7 +217,7 @@ pub(crate) fn find_unused_ephemeral_stake_seed(
 
     Err(format!(
         "Could not find an unused ephemeral stake account after {} attempts. \
-         Consider using a higher limit or cleaning up existing ephemeral accounts.",
+         All ephemeral seeds are in use. Wait for the next epoch for accounts to be cleaned up.",
         max_attempts
     )
     .into())

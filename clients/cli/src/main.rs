@@ -1040,13 +1040,12 @@ fn command_increase_additional_validator_stake(
         Some(seed) => seed,
         None => {
             // Find an unused ephemeral stake seed
-            let seed = find_unused_ephemeral_stake_seed(
+            find_unused_ephemeral_stake_seed(
                 &config.rpc_client,
                 &config.stake_pool_program_id,
                 stake_pool_address,
-                1000, // Max attempts to find unused seed
-            )?;
-            seed
+                u64::MAX, // Check all possible ephemeral seeds
+            )?
         }
     };
     if !config.no_update {
@@ -1084,14 +1083,12 @@ fn command_decrease_additional_validator_stake(
         Some(seed) => seed,
         None => {
             // Find an unused ephemeral stake seed
-            let seed = find_unused_ephemeral_stake_seed(
+            find_unused_ephemeral_stake_seed(
                 &config.rpc_client,
                 &config.stake_pool_program_id,
                 stake_pool_address,
-                1000, // Max attempts to find unused seed
-            )?;
-            println!("Using ephemeral stake seed: {}", seed);
-            seed
+                u64::MAX, // Check all possible ephemeral seeds
+            )?
         }
     };
     if !config.no_update {
