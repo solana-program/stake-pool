@@ -887,6 +887,7 @@ fn command_increase_validator_stake(
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
     lamports: u64,
+    allow_additional_on_transient_busy: bool,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
@@ -898,6 +899,28 @@ fn command_increase_validator_stake(
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
     let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
+
+    // Check if transient stake is in use
+    if is_transient_stake_in_use(validator_stake_info) {
+        if allow_additional_on_transient_busy {
+            println!("Transient stake account is in use. Attempting to use additional validator stake with ephemeral account...");
+            return command_increase_additional_validator_stake(
+                config,
+                stake_pool_address,
+                vote_account,
+                lamports,
+                None,
+            );
+        } else {
+            return Err(format!(
+                "Transient stake account is already in use for validator {}. \
+                 Use --allow-additional flag to automatically create an ephemeral account, \
+                 or use the increase-additional-validator-stake command directly.",
+                vote_account
+            )
+            .into());
+        }
+    }
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -925,6 +948,7 @@ fn command_decrease_validator_stake(
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
     lamports: u64,
+    allow_additional_on_transient_busy: bool,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
@@ -936,6 +960,28 @@ fn command_decrease_validator_stake(
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
     let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
+
+    // Check if transient stake is in use
+    if is_transient_stake_in_use(validator_stake_info) {
+        if allow_additional_on_transient_busy {
+            println!("Transient stake account is in use. Attempting to use additional validator stake with ephemeral account...");
+            return command_decrease_additional_validator_stake(
+                config,
+                stake_pool_address,
+                vote_account,
+                lamports,
+                None,
+            );
+        } else {
+            return Err(format!(
+                "Transient stake account is already in use for validator {}. \
+                 Use --allow-additional flag to automatically create an ephemeral account, \
+                 or use the decrease-additional-validator-stake command directly.",
+                vote_account
+            )
+            .into());
+        }
+    }
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -979,6 +1025,95 @@ fn command_set_preferred_validator(
         )],
         &signers,
     )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
+fn command_increase_additional_validator_stake(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    vote_account: &Pubkey,
+    lamports: u64,
+    ephemeral_stake_seed: Option<u64>,
+) -> CommandResult {
+    let ephemeral_stake_seed = match ephemeral_stake_seed {
+        Some(seed) => seed,
+        None => {
+            // Find an unused ephemeral stake seed
+            let seed = find_unused_ephemeral_stake_seed(
+                &config.rpc_client,
+                &config.stake_pool_program_id,
+                stake_pool_address,
+                1000, // Max attempts to find unused seed
+            )?;
+            seed
+        }
+    };
+    if !config.no_update {
+        command_update(config, stake_pool_address, false, false, false)?;
+    }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+
+    let instruction = spl_stake_pool::instruction::increase_additional_validator_stake_with_list(
+        &config.stake_pool_program_id,
+        &stake_pool,
+        &validator_list,
+        stake_pool_address,
+        vote_account,
+        lamports,
+        ephemeral_stake_seed,
+    )?;
+
+    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(config, &[instruction], &signers)?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
+fn command_decrease_additional_validator_stake(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    vote_account: &Pubkey,
+    lamports: u64,
+    ephemeral_stake_seed: Option<u64>,
+) -> CommandResult {
+    let ephemeral_stake_seed = match ephemeral_stake_seed {
+        Some(seed) => seed,
+        None => {
+            // Find an unused ephemeral stake seed
+            let seed = find_unused_ephemeral_stake_seed(
+                &config.rpc_client,
+                &config.stake_pool_program_id,
+                stake_pool_address,
+                1000, // Max attempts to find unused seed
+            )?;
+            println!("Using ephemeral stake seed: {}", seed);
+            seed
+        }
+    };
+    if !config.no_update {
+        command_update(config, stake_pool_address, false, false, false)?;
+    }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+
+    let instruction = spl_stake_pool::instruction::decrease_additional_validator_stake_with_list(
+        &config.stake_pool_program_id,
+        &stake_pool,
+        &validator_list,
+        stake_pool_address,
+        vote_account,
+        lamports,
+        ephemeral_stake_seed,
+    )?;
+
+    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(config, &[instruction], &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -2624,6 +2759,13 @@ fn main() {
                     .takes_value(true)
                     .help("Amount in SOL to add to the validator stake account. Must be at least the rent-exempt amount for a stake plus 1 SOL for merging."),
             )
+            .arg(
+                Arg::with_name("allow_additional")
+                    .long("allow-additional")
+                    .short("aa")
+                    .takes_value(false)
+                    .help("Allow automatic fallback to additional validator stake with ephemeral accounts if transient stake is in use"),
+            )
         )
         .subcommand(SubCommand::with_name("decrease-validator-stake")
             .about("Decrease stake to a validator, splitting from the active stake. Must be signed by the pool staker.")
@@ -2652,6 +2794,13 @@ fn main() {
                     .value_name("AMOUNT")
                     .takes_value(true)
                     .help("Amount in SOL to remove from the validator stake account. Must be at least the rent-exempt amount for a stake."),
+            )
+            .arg(
+                Arg::with_name("allow_additional")
+                    .long("allow-additional")
+                    .short("aa")
+                    .takes_value(false)
+                    .help("Allow automatic fallback to additional validator stake with ephemeral accounts if transient stake is in use"),
             )
         )
         .subcommand(SubCommand::with_name("set-preferred-validator")
@@ -2692,6 +2841,80 @@ fn main() {
                 .arg("vote_account")
                 .arg("unset")
                 .required(true)
+            )
+        )
+        .subcommand(SubCommand::with_name("increase-additional-validator-stake")
+            .about("Increase stake to a validator again in the same epoch. Must be signed by the pool staker.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            )
+            .arg(
+                Arg::with_name("vote_account")
+                    .index(2)
+                    .validator(is_pubkey)
+                    .value_name("VOTE_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Vote account for the validator to increase stake to"),
+            )
+            .arg(
+                Arg::with_name("amount")
+                    .index(3)
+                    .validator(is_amount)
+                    .value_name("AMOUNT")
+                    .takes_value(true)
+                    .help("Amount in SOL to add to the validator stake account using ephemeral accounts."),
+            )
+            .arg(
+                Arg::with_name("ephemeral_stake_seed")
+                    .long("ephemeral-seed")
+                    .validator(is_parsable::<u64>)
+                    .value_name("SEED")
+                    .takes_value(true)
+                    .help("Specific ephemeral stake seed to use. If not provided, will find next available seed automatically."),
+            )
+        )
+        .subcommand(SubCommand::with_name("decrease-additional-validator-stake")
+            .about("Decrease stake from a validator in the same epoch. Must be signed by the pool staker.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            )
+            .arg(
+                Arg::with_name("vote_account")
+                    .index(2)
+                    .validator(is_pubkey)
+                    .value_name("VOTE_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Vote account for the validator to decrease stake from"),
+            )
+            .arg(
+                Arg::with_name("amount")
+                    .index(3)
+                    .validator(is_amount)
+                    .value_name("AMOUNT")
+                    .takes_value(true)
+                    .help("Amount in SOL to remove from the validator stake account using ephemeral accounts."),
+            )
+            .arg(
+                Arg::with_name("ephemeral_stake_seed")
+                    .long("ephemeral-seed")
+                    .validator(is_parsable::<u64>)
+                    .value_name("SEED")
+                    .takes_value(true)
+                    .help("Specific ephemeral stake seed to use. If not provided, will find next available seed automatically."),
             )
         )
         .subcommand(SubCommand::with_name("deposit-stake")
@@ -3314,14 +3537,28 @@ fn main() {
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
             let amount_str = arg_matches.value_of("amount").unwrap();
             let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
-            command_increase_validator_stake(&config, &stake_pool_address, &vote_account, lamports)
+            let allow_additional = arg_matches.is_present("allow_additional");
+            command_increase_validator_stake(
+                &config,
+                &stake_pool_address,
+                &vote_account,
+                lamports,
+                allow_additional,
+            )
         }
         ("decrease-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
             let amount_str = arg_matches.value_of("amount").unwrap();
             let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
-            command_decrease_validator_stake(&config, &stake_pool_address, &vote_account, lamports)
+            let allow_additional = arg_matches.is_present("allow_additional");
+            command_decrease_validator_stake(
+                &config,
+                &stake_pool_address,
+                &vote_account,
+                lamports,
+                allow_additional,
+            )
         }
         ("set-preferred-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
@@ -3339,6 +3576,42 @@ fn main() {
                 &stake_pool_address,
                 preferred_type,
                 vote_account,
+            )
+        }
+        ("increase-additional-validator-stake", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
+            let amount_str = arg_matches.value_of("amount").unwrap();
+            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
+
+            let ephemeral_stake_seed = arg_matches
+                .value_of("ephemeral_stake_seed")
+                .map(|seed_str| seed_str.parse::<u64>().unwrap());
+
+            command_increase_additional_validator_stake(
+                &config,
+                &stake_pool_address,
+                &vote_account,
+                lamports,
+                ephemeral_stake_seed,
+            )
+        }
+        ("decrease-additional-validator-stake", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
+            let amount_str = arg_matches.value_of("amount").unwrap();
+            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
+
+            let ephemeral_stake_seed = arg_matches
+                .value_of("ephemeral_stake_seed")
+                .map(|seed_str| seed_str.parse::<u64>().unwrap());
+
+            command_decrease_additional_validator_stake(
+                &config,
+                &stake_pool_address,
+                &vote_account,
+                lamports,
+                ephemeral_stake_seed,
             )
         }
         ("deposit-stake", Some(arg_matches)) => {
