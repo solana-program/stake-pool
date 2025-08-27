@@ -9,6 +9,7 @@ repository = "https://github.com/solana-labs/solana-program-library"
 version = "2.0.1"
 
 [dependencies]
+bs58 = "0.5"
 clap = "2.33.3"
 serde = "1.0.219"
 solana-account-decoder = "2.3.4"
