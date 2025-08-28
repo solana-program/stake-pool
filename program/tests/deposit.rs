@@ -9,11 +9,11 @@ use {
         borsh1::try_from_slice_unchecked,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
+        sysvar,
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
@@ -89,6 +89,7 @@ async fn setup(
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     context.warp_to_slot(first_normal_slot + 1).unwrap();
+    fix_stake_history(&mut context).await;
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
