@@ -1222,8 +1222,7 @@ impl Processor {
         let user_pubkey = Session::extract_user_from_signer_or_session(
             signer_or_session_ai,
             program_id,
-        )
-        .map_err(StakePoolError::from)?;
+        )?;
 
         // Verify `user_wsol_ai` is that user’s ATA for WSOL
         let expected_wsol_ata =
@@ -3319,8 +3318,7 @@ impl Processor {
         let user_pubkey = Session::extract_user_from_signer_or_session(
             signer_or_session,
             program_id,
-        )
-        .map_err(StakePoolError::from)?;
+        )?;
 
         // Verify `user_wsol_ai` is that user’s ATA for WSOL
         let expected_wsol_ata =
