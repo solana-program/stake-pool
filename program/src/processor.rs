@@ -4144,6 +4144,8 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::SessionInvalidAccountData => msg!("Error: A session account failed to deserialize"),
             StakePoolError::SessionInvalidAccountDiscriminator => msg!("Error: A session account has the wrong discriminator"),
             StakePoolError::SessionInvalidAccountVersion => msg!("Error: A session account has the wrong version"),
+            StakePoolError::SessionLimitsExceeded => msg!("Error: Session limits have been exceeded"),
+            StakePoolError::SessionRevoked => msg!("Error: The session has been revoked"),
         }
     }
 }
