@@ -191,6 +191,12 @@ pub enum StakePoolError {
     /// A session account has the wrong version
     #[error("SessionInvalidAccountVersion")]
     SessionInvalidAccountVersion,
+    /// Session limits have been exceeded
+    #[error("SessionLimitsExceeded")]
+    SessionLimitsExceeded,
+    /// The session has been revoked
+    #[error("SessionRevoked")]
+    SessionRevoked,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
@@ -209,6 +215,8 @@ impl From<SessionError> for StakePoolError {
             SessionError::InvalidAccountData => StakePoolError::SessionInvalidAccountData,
             SessionError::InvalidAccountDiscriminator => StakePoolError::SessionInvalidAccountDiscriminator,
             SessionError::InvalidAccountVersion => StakePoolError::SessionInvalidAccountVersion,
+            SessionError::LimitsExceeded => StakePoolError::SessionLimitsExceeded,
+            SessionError::Revoked => StakePoolError::SessionRevoked,
         }
     }
 }
