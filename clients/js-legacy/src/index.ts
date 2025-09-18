@@ -47,6 +47,7 @@ import {
   STAKE_POOL_PROGRAM_ID,
   DEVNET_STAKE_POOL_PROGRAM_ID,
   FOGO_TESTNET_STAKE_POOL_PROGRAM_ID,
+  FOGO_DEVNET_STAKE_POOL_PROGRAM_ID,
 } from './constants';
 import { create } from 'superstruct';
 import BN from 'bn.js';
@@ -84,6 +85,8 @@ export interface StakePoolAccounts {
 export function getStakePoolProgramId(rpcEndpoint: string): PublicKey {
   if (rpcEndpoint.includes('devnet')) {
     return DEVNET_STAKE_POOL_PROGRAM_ID;
+  } else if (rpcEndpoint.includes('testnet.fogo.io?dev')) {
+    return FOGO_DEVNET_STAKE_POOL_PROGRAM_ID;
   } else if (rpcEndpoint.includes('testnet.fogo')) {
     return FOGO_TESTNET_STAKE_POOL_PROGRAM_ID;
   } else {
