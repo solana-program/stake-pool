@@ -2806,7 +2806,7 @@ impl Processor {
         accounts: &[AccountInfo],
         deposit_lamports: u64,
         minimum_pool_tokens_out: Option<u64>,
-        already_transferred: bool,
+        is_wsol_path: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2892,9 +2892,9 @@ impl Processor {
             }
         }
 
-        // special case: if the user has already transferred the lamports to the reserve stake account, we don't need to transfer the lamports
+        // special case: in the wsol deposit path, the user has already transferred the lamports to the reserve stake account, so we don't need to transfer the lamports
         // this is needed for the "deposit wsol with session" case, where we have already transferred the lamports to the reserve stake account
-        if !already_transferred {
+        if !is_wsol_path {
             Self::sol_transfer(
                 from_user_lamports_info.clone(),
                 reserve_stake_account_info.clone(),
