@@ -20,6 +20,11 @@ export const FOGO_TESTNET_STAKE_POOL_PROGRAM_ID = new PublicKey(
   'SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud',
 );
 
+// Public key that identifies the development SPL Stake Pool program deployed to testnet.
+export const FOGO_DEVNET_STAKE_POOL_PROGRAM_ID = new PublicKey(
+  'SDbhNGbX66AFP9RPa3m8v1XooCCb5mbutk2NiVxdTw4',
+);
+
 // Maximum number of validators to update during UpdateValidatorListBalance.
 export const MAX_VALIDATORS_TO_UPDATE = 5;
 

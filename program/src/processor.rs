@@ -2806,7 +2806,7 @@ impl Processor {
         accounts: &[AccountInfo],
         deposit_lamports: u64,
         minimum_pool_tokens_out: Option<u64>,
-        already_transferred: bool,
+        is_wsol_path: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2892,9 +2892,9 @@ impl Processor {
             }
         }
 
-        // special case: if the user has already transferred the lamports to the reserve stake account, we don't need to transfer the lamports
+        // special case: in the wsol deposit path, the user has already transferred the lamports to the reserve stake account, so we don't need to transfer the lamports
         // this is needed for the "deposit wsol with session" case, where we have already transferred the lamports to the reserve stake account
-        if !already_transferred {
+        if !is_wsol_path {
             Self::sol_transfer(
                 from_user_lamports_info.clone(),
                 reserve_stake_account_info.clone(),
@@ -3533,7 +3533,32 @@ impl Processor {
             // but the NEW account (a PDA) must also appear as a signer – therefore
             // we invoke with `invoke_signed` and pass `program_signer_seeds`.
             invoke_signed(&burn_ix, &[burn_from_pool_info.clone(), pool_mint_info.clone(), user_transfer_authority_info.clone(), program_signer_ai.clone()], &[program_signer_seeds])?;
+
+            if pool_tokens_fee > 0 {
+                let fee_ix = transfer_checked(
+                    token_program_info.key,
+                    burn_from_pool_info.key,       // source (user pool-token ATA)
+                    pool_mint_info.key,            // mint
+                    manager_fee_info.key,          // destination
+                    user_transfer_authority_info.key, // session authority
+                    Some(program_signer_ai.key),   // extra PDA signer
+                    pool_tokens_fee,
+                    decimals,                      // pool mint decimals
+                )?;
+                invoke_signed(
+                    &fee_ix,
+                    &[
+                        burn_from_pool_info.clone(),
+                        pool_mint_info.clone(),
+                        manager_fee_info.clone(),
+                        user_transfer_authority_info.clone(),
+                        program_signer_ai.clone(),
+                    ],
+                    &[program_signer_seeds],
+                )?;
+            }
         } else {
+            // Vanilla path (SOL path)
             Self::token_burn(
                 token_program_info.clone(),
                 burn_from_pool_info.clone(),
@@ -3541,18 +3566,18 @@ impl Processor {
                 user_transfer_authority_info.clone(),
                 pool_tokens_burnt,
             )?;
-        }
 
-        if pool_tokens_fee > 0 {
-            Self::token_transfer(
-                token_program_info.clone(),
-                burn_from_pool_info.clone(),
-                pool_mint_info.clone(),
-                manager_fee_info.clone(),
-                user_transfer_authority_info.clone(),
-                pool_tokens_fee,
-                decimals,
-            )?;
+            if pool_tokens_fee > 0 {
+                Self::token_transfer(
+                    token_program_info.clone(),
+                    burn_from_pool_info.clone(),
+                    pool_mint_info.clone(),
+                    manager_fee_info.clone(),
+                    user_transfer_authority_info.clone(),
+                    pool_tokens_fee,
+                    decimals,
+                )?;
+            }
         }
 
         Self::stake_withdraw(
