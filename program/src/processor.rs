@@ -1209,12 +1209,36 @@ impl Processor {
         // ──────────────────────────────────────────────────────────────────────
         // 1. Basic sanity checks
         // ──────────────────────────────────────────────────────────────────────
-        
+
+        // Check the token program is the SPL-Token program
+        if spl_token::check_program_account(token_program_ai.key).is_err() {
+            msg!("token_program_ai: {:?}", token_program_ai.key);
+            msg!("spl_token: {:?}", spl_token::id());
+            msg!("token_program_ai must be the SPL-Token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
         // Check that the WSOL mint is the native mint (So11111111111111111111111111111111111111112)
         if *wsol_mint_ai.key != native_mint::id() {
             msg!("WSOL mint: {:?}", wsol_mint_ai.key);
             msg!("native mint: {:?}", native_mint::id());
             msg!("WSOL mint must be the wrapped-SOL mint (So111…)");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Check that the wsol mint is owned by the token program
+        if *wsol_mint_ai.owner != *token_program_ai.key {
+            msg!("mint.owner: {:?}", wsol_mint_ai.owner);
+            msg!("token_program_ai.key: {:?}", token_program_ai.key);
+            msg!("mint.owner must be the token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Check that the user wsol account is owned by the token program
+        if *user_wsol_ai.owner != *token_program_ai.key {
+            msg!("user_wsol_ai.owner: {:?}", user_wsol_ai.owner);
+            msg!("token_program_ai.key: {:?}", token_program_ai.key);
+            msg!("user_wsol_ai.owner must be the token program");
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -1257,6 +1281,12 @@ impl Processor {
                 msg!("wsol_mint_ai.key: {:?}", wsol_mint_ai.key);
                 msg!("token_account.owner: {:?}", token_account.owner);
                 msg!("program_signer_ai.key: {:?}", program_signer_ai.key);
+                return Err(ProgramError::InvalidAccountData);
+            }
+
+            if token_account.amount != 0 {
+                msg!("Account already exists, but is not empty");
+                msg!("token_account.amount: {:?}", token_account.amount);
                 return Err(ProgramError::InvalidAccountData);
             }
         } else {
@@ -1364,6 +1394,14 @@ impl Processor {
             ],
             &[program_signer_seeds],                // ← seeds for program_signer PDA
         )?;
+
+        // Check the balance of the transient WSOL account equals to the deposit_lamports
+        let transient_wsol_balance = spl_token::state::Account::unpack(&transient_wsol_ai.data.borrow())?.amount;
+        if transient_wsol_balance != deposit_lamports {
+            msg!("transient_wsol_balance: {:?}", transient_wsol_balance);
+            msg!("deposit_lamports: {:?}", deposit_lamports);
+            return Err(ProgramError::InvalidAccountData);
+        }
 
 
         // ──────────────────────────────────────────────────────────────────────
@@ -3291,7 +3329,7 @@ impl Processor {
         let stake_program_info        = next_account_info(ai)?; // 10 []
         let token_program_info        = next_account_info(ai)?; // 11 []
 
-        // --- Extra accounts for ATA creation / validation (AFTER the optional one) ---
+        // --- Extra accounts for WSOL ATA creation / validation ---
         // If you don't want on-chain creation, you can omit these and the creation block below.
         let wsol_mint_ai              = next_account_info(ai)?; // 12 []
         let fee_payer_ai              = next_account_info(ai)?; // 13 [s,w] payer for ATA (session or wallet)
@@ -3306,11 +3344,35 @@ impl Processor {
         // 1. Basic sanity checks
         // ──────────────────────────────────────────────────────────────────────
 
+        // Check the token program is the SPL-Token program
+        if spl_token::check_program_account(token_program_info.key).is_err() {
+            msg!("token_program_ai: {:?}", token_program_info.key);
+            msg!("spl_token: {:?}", spl_token::id());
+            msg!("token_program_ai must be the SPL-Token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
         // Check that the WSOL mint is the native mint (So11111111111111111111111111111111111111112)
         if *wsol_mint_ai.key != native_mint::id() {
             msg!("WSOL mint: {:?}", wsol_mint_ai.key);
             msg!("native mint: {:?}", native_mint::id());
             msg!("WSOL mint must be the wrapped-SOL mint (So111…)");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Check that the wsol mint is owned by the token program
+        if *wsol_mint_ai.owner != *token_program_info.key {
+            msg!("mint.owner: {:?}", wsol_mint_ai.owner);
+            msg!("token_program_ai.key: {:?}", token_program_info.key);
+            msg!("mint.owner must be the token program");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Check that the user wsol account is owned by the token program
+        if *user_wsol_ai.owner != *token_program_info.key {
+            msg!("user_wsol_ai.owner: {:?}", user_wsol_ai.owner);
+            msg!("token_program_ai.key: {:?}", token_program_info.key);
+            msg!("user_wsol_ai.owner must be the token program");
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -3327,6 +3389,16 @@ impl Processor {
             msg!("user_wsol_account is not the user's ATA for WSOL");
             return Err(ProgramError::InvalidAccountData);
         }
+
+        // Validate the destination matches the real user that corresponds to the session
+        if *user_owner_ai.key != user_pubkey {
+            msg!("user_owner_ai.key: {:?}", user_owner_ai.key);
+            msg!("user_pubkey: {:?}", user_pubkey);
+            msg!("user_owner_ai.key must be the real user");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // Validate the owner 
 
         // ──────────────────────────────────────────────────────────────────────
         // 2. Create the ATA if missing (idempotent)

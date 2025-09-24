@@ -115,29 +115,53 @@ Now let's stake:
 spl-stake-pool --url https://testnet.fogo.io --program-id SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud deposit-wsol-with-session 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9 1
 ```
 
-## Create/Update Token Metadata
+## Update Pool Fees
 
-We save the token logo and the metadata json file in this repo's `static` folder (currently we use the branch `wsol-adaptor`, which might be changed in the future).
-
-To create the metadata, run the following command:
+To change the epoch fee after pool creation (e.g., from 3% to 5%):
 
 ```
-# use the pool's manager identity
-spl-stake-pool \
-  --program-id SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud \
-  create-token-metadata 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9 \
-  "FOGO LST Token" \
-  "stFOGO" \
-  "https://raw.githubusercontent.com/Firstset/stake-pool-v2/refs/heads/wsol-adaptor/static/brasa-metadata.json"
+spl-stake-pool --url https://testnet.fogo.io --program-id SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud set-fee 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9 epoch 5 100
 ```
 
-To update the metadata, first edit the `brasa-metadata.json` file in `static` folder and remember to push the changes. Then run the following command:
+Available fee types: `epoch`, `stake-deposit`, `sol-deposit`, `stake-withdrawal`, `sol-withdrawal`
+
+## Wrapping SOL with External Keypairs
+
+To wrap SOL from a wallet not configured in your CLI (using private key or mnemonic):
+
+1. Create keypair file from mnemonic:
+```
+solana-keygen recover 'prompt://' --outfile temp_keypair.json
+```
+
+2. For existing wrapped SOL accounts, transfer native SOL and sync (most efficient):
+```
+solana transfer -u https://testnet.fogo.io -k temp_keypair.json <WSOL_TOKEN_ACCOUNT> <AMOUNT>
+spl-token sync-native -u https://testnet.fogo.io --address <WSOL_TOKEN_ACCOUNT>
+```
+
+3. Clean up:
+```
+rm temp_keypair.json
+```
+
+**Alternative methods:**
+- `spl-token wrap --create-aux-account <AMOUNT> temp_keypair.json` (creates new auxiliary account)
+- Close existing account first: `spl-token close --address <WSOL_TOKEN_ACCOUNT> temp_keypair.json` then wrap
+
+## Gathering pool info
+
+Run `list`:
 
 ```
-spl-stake-pool \
-  --program-id SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud \
-  update-token-metadata 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9 \
-  "FOGO LST Token" \
-  "stFOGO" \
-  "https://raw.githubusercontent.com/Firstset/stake-pool-v2/refs/heads/wsol-adaptor/static/brasa-metadata.json"
+spl-stake-pool --url https://testnet.fogo.io --program-id SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud list 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9
 ```
+
+Add the `-v` verbose option to print even more details.
+
+## Deployments
+
+| Network | Program ID | Pool ID |
+|---------|------------|---------|
+| testnet | SPRe2ae9JQhySheYsSANX6M8tUZLt5bQonnBJ6Wu6Ud | 4yoj9HDiL2pujuh2ME5MJJ6roLseTAkFqLmA4SrG7Yi9 |
+| devnet  | SDbhNGbX66AFP9RPa3m8v1XooCCb5mbutk2NiVxdTw4 | 5wL3K4ACX3pZqg2Aq9cxxPCe9eSoc5c6dBGnhXaPkPMk |
