@@ -3483,7 +3483,7 @@ impl Processor {
         // 3. Process the withdrawal
         // ──────────────────────────────────────────────────────────────────────
 
-        // --- Rebuild the exact account slice for the inner WithdrawSol delegate ---
+        // Rebuild the exact account slice for the inner WithdrawSol delegate
         let mut withdraw_sol_accts: Vec<AccountInfo> = vec![
             stake_pool_info.clone(),         // 0
             withdraw_authority_info.clone(), // 1
@@ -3497,18 +3497,19 @@ impl Processor {
             stake_history_info.clone(),      // 9
             stake_program_info.clone(),      // 10
             token_program_info.clone(),      // 11
-            program_signer_info.clone(),       // 12 (program signer)
         ];
         if let Ok(sol_withdraw_auth_info) = sol_withdraw_auth_res {
             withdraw_sol_accts.push(sol_withdraw_auth_info.clone()); // 12 optional
         }
 
-        // --- Delegate to core withdraw: moves lamports to `user_wsol_info` ----------
+        // Program signer goes last to preserve integrity of other code paths upstream of `process_withdraw_sol`
+        withdraw_sol_accts.push(program_signer_info.clone()); // 13 (program signer)
+
+        // Delegate to core withdraw: moves lamports to `user_wsol_info`
         Self::process_withdraw_sol(program_id, &withdraw_sol_accts, pool_tokens, None, true)?;
 
-        // --- Sync native so token-amount reflects the lamports --------------------
+        // Sync native so token-amount reflects the lamports
         let sync_ix = token_ix::sync_native(token_program_info.key, user_wsol_info.key)?;
-        // Only the token account itself is required; no authority signer needed.
         invoke(&sync_ix, &[user_wsol_info.clone()])?;
 
         Ok(())
@@ -3536,8 +3537,8 @@ impl Processor {
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
-        let maybe_program_signer_info = next_account_info(account_info_iter); // might not be present in the standard SOL path
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
+        let maybe_program_signer_info = next_account_info(account_info_iter); // Not exposed externally, only present in the WSOL path
         
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
