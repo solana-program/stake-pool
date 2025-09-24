@@ -1184,26 +1184,29 @@ impl Processor {
         deposit_lamports: u64,
     ) -> ProgramResult {
         
-        // ──────────────────────────────────────────────────────────────────────
-        // 0. Account mapping  (must match instruction.rs order)
-        // ──────────────────────────────────────────────────────────────────────
+        // --- EXACT same order as DepositSol for the first 9 accounts 
+        // (excludes `from_user_lamports_info` which is also the reserve in our WSOL deposit path) ---
         let account_info_iter = &mut accounts.iter();
-        let signer_or_session_info         = next_account_info(account_info_iter)?; // [signer]
-        let fee_payer_info                  = next_account_info(account_info_iter)?; // [signer]
-        let program_signer_info    = next_account_info(account_info_iter)?; // writable (PDA)
-        let user_wsol_info                = next_account_info(account_info_iter)?; // writable
-        let transient_wsol_info           = next_account_info(account_info_iter)?; // writable
-        let wsol_mint_info                = next_account_info(account_info_iter)?; // read-only
-        let stake_pool_info               = next_account_info(account_info_iter)?; // writable
-        let stake_pool_withdraw_auth_info = next_account_info(account_info_iter)?; // read-only
-        let reserve_stake_info            = next_account_info(account_info_iter)?; // writable
-        let pool_tokens_to_info           = next_account_info(account_info_iter)?; // writable
-        let manager_fee_info              = next_account_info(account_info_iter)?; // writable
-        let referrer_pool_tokens_info     = next_account_info(account_info_iter)?; // writable
-        let pool_mint_info                = next_account_info(account_info_iter)?; // writable
-        let token_program_info            = next_account_info(account_info_iter)?; // read-only
-        let system_program_info           = next_account_info(account_info_iter)?; // read-only
-        let sol_deposit_auth_info         = account_info_iter.next(); // read-only
+        let stake_pool_info               = next_account_info(account_info_iter)?; // 0 [w]
+        let stake_pool_withdraw_auth_info = next_account_info(account_info_iter)?; // 1 []
+        let reserve_stake_info            = next_account_info(account_info_iter)?; // 2 [w]
+        let pool_tokens_to_info           = next_account_info(account_info_iter)?; // 3 [w]
+        let manager_fee_info              = next_account_info(account_info_iter)?; // 4 [w]
+        let referrer_pool_tokens_info     = next_account_info(account_info_iter)?; // 5 [w]
+        let pool_mint_info                = next_account_info(account_info_iter)?; // 6 [w]
+        let system_program_info           = next_account_info(account_info_iter)?; // 7 []
+        let token_program_info            = next_account_info(account_info_iter)?; // 8 []
+        
+        // --- Extra accounts for WSOL ATA creation / validation ---
+        let signer_or_session_info        = next_account_info(account_info_iter)?; // 9 [s]
+        let wsol_mint_info                = next_account_info(account_info_iter)?; // 10 []
+        let fee_payer_info                = next_account_info(account_info_iter)?; // 11 [s]
+        let user_wsol_info                = next_account_info(account_info_iter)?; // 12 [w]
+        let transient_wsol_info           = next_account_info(account_info_iter)?; // 13 [w]
+        let program_signer_info           = next_account_info(account_info_iter)?; // 14 [w]
+
+        // Optional SOL deposit authority (needs to be at the end since it is not always present)
+        let sol_deposit_auth_info         = account_info_iter.next(); // 15 optional [s]
 
 
         // ──────────────────────────────────────────────────────────────────────
@@ -3363,15 +3366,14 @@ impl Processor {
         let token_program_info        = next_account_info(account_info_iter)?; // 11 []
 
         // --- Extra accounts for WSOL ATA creation / validation ---
-        // If you don't want on-chain creation, you can omit these and the creation block below.
         let wsol_mint_info              = next_account_info(account_info_iter)?; // 12 []
-        let fee_payer_info              = next_account_info(account_info_iter)?; // 13 [s,w] payer for ATA (session or wallet)
+        let fee_payer_info              = next_account_info(account_info_iter)?; // 13 [s] payer for ATA (session or wallet)
         let user_owner_info             = next_account_info(account_info_iter)?; // 14 []   the user's system account (owner of ATA)
         let system_program_info         = next_account_info(account_info_iter)?; // 15 []
         let program_signer_info         = next_account_info(account_info_iter)?; // 16 [] (program signer)
 
         // Optional SOL withdraw authority (needs to be at the end since it is not always present)
-        let sol_withdraw_auth_res     = next_account_info(account_info_iter);  // 16 optional [s]
+        let sol_withdraw_auth_res     = next_account_info(account_info_iter);  // 17 optional [s]
 
         // ──────────────────────────────────────────────────────────────────────
         // 1. Basic sanity checks
