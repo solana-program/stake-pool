@@ -3368,7 +3368,7 @@ impl Processor {
         // --- Extra accounts for WSOL ATA creation / validation ---
         let wsol_mint_info              = next_account_info(account_info_iter)?; // 12 []
         let fee_payer_info              = next_account_info(account_info_iter)?; // 13 [s] payer for ATA (session or wallet)
-        let user_owner_info             = next_account_info(account_info_iter)?; // 14 []   the user's system account (owner of ATA)
+        let user_owner_info             = next_account_info(account_info_iter)?; // 14 [] the user's system account (owner of ATA)
         let system_program_info         = next_account_info(account_info_iter)?; // 15 []
         let program_signer_info         = next_account_info(account_info_iter)?; // 16 [] (program signer)
 
@@ -3438,8 +3438,6 @@ impl Processor {
             msg!("user_owner_info.key must be the real user");
             return Err(ProgramError::InvalidAccountData);
         }
-
-        // Validate the owner 
 
         // ──────────────────────────────────────────────────────────────────────
         // 2. Create the ATA if missing (idempotent)
