@@ -1283,6 +1283,12 @@ impl Processor {
                 msg!("program_signer_ai.key: {:?}", program_signer_ai.key);
                 return Err(ProgramError::InvalidAccountData);
             }
+
+            if token_account.amount != 0 {
+                msg!("Account already exists, but is not empty");
+                msg!("token_account.amount: {:?}", token_account.amount);
+                return Err(ProgramError::InvalidAccountData);
+            }
         } else {
             // Account doesn't exist, create it
 
@@ -1388,6 +1394,14 @@ impl Processor {
             ],
             &[program_signer_seeds],                // ← seeds for program_signer PDA
         )?;
+
+        // Check the balance of the transient WSOL account equals to the deposit_lamports
+        let transient_wsol_balance = spl_token::state::Account::unpack(&transient_wsol_ai.data.borrow())?.amount;
+        if transient_wsol_balance != deposit_lamports {
+            msg!("transient_wsol_balance: {:?}", transient_wsol_balance);
+            msg!("deposit_lamports: {:?}", deposit_lamports);
+            return Err(ProgramError::InvalidAccountData);
+        }
 
 
         // ──────────────────────────────────────────────────────────────────────
