@@ -984,7 +984,7 @@ export class StakePoolInstruction {
       /* 6  */ { pubkey: params.poolMint, isSigner: false, isWritable: true },
       /* 7  */ { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       /* 8  */ { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
-      
+
       // --- Extra accounts for WSOL ATA creation / validation ------------
       /* 9  */ { pubkey: params.signerOrSession, isSigner: true, isWritable: true },
       /* 10 */ { pubkey: params.wsolMint, isSigner: false, isWritable: false },
