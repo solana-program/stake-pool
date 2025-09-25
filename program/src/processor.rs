@@ -1184,26 +1184,29 @@ impl Processor {
         deposit_lamports: u64,
     ) -> ProgramResult {
         
-        // ──────────────────────────────────────────────────────────────────────
-        // 0. Account mapping  (must match instruction.rs order)
-        // ──────────────────────────────────────────────────────────────────────
+        // --- EXACT same order as DepositSol for the first 9 accounts 
+        // (excludes `from_user_lamports_info` which is also the reserve in our WSOL deposit path) ---
         let account_info_iter = &mut accounts.iter();
-        let signer_or_session_info         = next_account_info(account_info_iter)?; // [signer]
-        let fee_payer_info                  = next_account_info(account_info_iter)?; // [signer]
-        let program_signer_info    = next_account_info(account_info_iter)?; // writable (PDA)
-        let user_wsol_info                = next_account_info(account_info_iter)?; // writable
-        let transient_wsol_info           = next_account_info(account_info_iter)?; // writable
-        let wsol_mint_info                = next_account_info(account_info_iter)?; // read-only
-        let stake_pool_info               = next_account_info(account_info_iter)?; // writable
-        let stake_pool_withdraw_auth_info = next_account_info(account_info_iter)?; // read-only
-        let reserve_stake_info            = next_account_info(account_info_iter)?; // writable
-        let pool_tokens_to_info           = next_account_info(account_info_iter)?; // writable
-        let manager_fee_info              = next_account_info(account_info_iter)?; // writable
-        let referrer_pool_tokens_info     = next_account_info(account_info_iter)?; // writable
-        let pool_mint_info                = next_account_info(account_info_iter)?; // writable
-        let token_program_info            = next_account_info(account_info_iter)?; // read-only
-        let system_program_info           = next_account_info(account_info_iter)?; // read-only
-        let sol_deposit_auth_info         = account_info_iter.next(); // read-only
+        let stake_pool_info               = next_account_info(account_info_iter)?; // 0 [w]
+        let stake_pool_withdraw_auth_info = next_account_info(account_info_iter)?; // 1 []
+        let reserve_stake_info            = next_account_info(account_info_iter)?; // 2 [w]
+        let pool_tokens_to_info           = next_account_info(account_info_iter)?; // 3 [w]
+        let manager_fee_info              = next_account_info(account_info_iter)?; // 4 [w]
+        let referrer_pool_tokens_info     = next_account_info(account_info_iter)?; // 5 [w]
+        let pool_mint_info                = next_account_info(account_info_iter)?; // 6 [w]
+        let system_program_info           = next_account_info(account_info_iter)?; // 7 []
+        let token_program_info            = next_account_info(account_info_iter)?; // 8 []
+        
+        // --- Extra accounts for WSOL ATA creation / validation ---
+        let signer_or_session_info        = next_account_info(account_info_iter)?; // 9 [s]
+        let wsol_mint_info                = next_account_info(account_info_iter)?; // 10 []
+        let fee_payer_info                = next_account_info(account_info_iter)?; // 11 [s]
+        let user_wsol_info                = next_account_info(account_info_iter)?; // 12 [w]
+        let transient_wsol_info           = next_account_info(account_info_iter)?; // 13 [w]
+        let program_signer_info           = next_account_info(account_info_iter)?; // 14 [w]
+
+        // Optional SOL deposit authority (needs to be at the end since it is not always present)
+        let sol_deposit_auth_info         = account_info_iter.next(); // 15 optional [s]
 
 
         // ──────────────────────────────────────────────────────────────────────
@@ -3363,15 +3366,14 @@ impl Processor {
         let token_program_info        = next_account_info(account_info_iter)?; // 11 []
 
         // --- Extra accounts for WSOL ATA creation / validation ---
-        // If you don't want on-chain creation, you can omit these and the creation block below.
         let wsol_mint_info              = next_account_info(account_info_iter)?; // 12 []
-        let fee_payer_info              = next_account_info(account_info_iter)?; // 13 [s,w] payer for ATA (session or wallet)
-        let user_owner_info             = next_account_info(account_info_iter)?; // 14 []   the user's system account (owner of ATA)
+        let fee_payer_info              = next_account_info(account_info_iter)?; // 13 [s] payer for ATA (session or wallet)
+        let user_owner_info             = next_account_info(account_info_iter)?; // 14 [] the user's system account (owner of ATA)
         let system_program_info         = next_account_info(account_info_iter)?; // 15 []
         let program_signer_info         = next_account_info(account_info_iter)?; // 16 [] (program signer)
 
         // Optional SOL withdraw authority (needs to be at the end since it is not always present)
-        let sol_withdraw_auth_res     = next_account_info(account_info_iter);  // 16 optional [s]
+        let sol_withdraw_auth_res     = next_account_info(account_info_iter);  // 17 optional [s]
 
         // ──────────────────────────────────────────────────────────────────────
         // 1. Basic sanity checks
@@ -3437,8 +3439,6 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
-        // Validate the owner 
-
         // ──────────────────────────────────────────────────────────────────────
         // 2. Create the ATA if missing (idempotent)
         // ──────────────────────────────────────────────────────────────────────
@@ -3483,7 +3483,7 @@ impl Processor {
         // 3. Process the withdrawal
         // ──────────────────────────────────────────────────────────────────────
 
-        // --- Rebuild the exact account slice for the inner WithdrawSol delegate ---
+        // Rebuild the exact account slice for the inner WithdrawSol delegate
         let mut withdraw_sol_accts: Vec<AccountInfo> = vec![
             stake_pool_info.clone(),         // 0
             withdraw_authority_info.clone(), // 1
@@ -3497,18 +3497,19 @@ impl Processor {
             stake_history_info.clone(),      // 9
             stake_program_info.clone(),      // 10
             token_program_info.clone(),      // 11
-            program_signer_info.clone(),       // 12 (program signer)
         ];
         if let Ok(sol_withdraw_auth_info) = sol_withdraw_auth_res {
             withdraw_sol_accts.push(sol_withdraw_auth_info.clone()); // 12 optional
         }
 
-        // --- Delegate to core withdraw: moves lamports to `user_wsol_info` ----------
+        // Program signer goes last to preserve integrity of other code paths upstream of `process_withdraw_sol`
+        withdraw_sol_accts.push(program_signer_info.clone()); // 13 (program signer)
+
+        // Delegate to core withdraw: moves lamports to `user_wsol_info`
         Self::process_withdraw_sol(program_id, &withdraw_sol_accts, pool_tokens, None, true)?;
 
-        // --- Sync native so token-amount reflects the lamports --------------------
+        // Sync native so token-amount reflects the lamports
         let sync_ix = token_ix::sync_native(token_program_info.key, user_wsol_info.key)?;
-        // Only the token account itself is required; no authority signer needed.
         invoke(&sync_ix, &[user_wsol_info.clone()])?;
 
         Ok(())
@@ -3536,8 +3537,8 @@ impl Processor {
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
-        let maybe_program_signer_info = next_account_info(account_info_iter); // might not be present in the standard SOL path
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
+        let maybe_program_signer_info = next_account_info(account_info_iter); // Not exposed externally, only present in the WSOL path
         
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;

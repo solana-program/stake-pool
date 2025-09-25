@@ -742,21 +742,21 @@ pub enum StakePoolInstruction {
     ///   The WSOL account is closed and its lamports used for the deposit.
     ///
     ///   Accounts (must match the order consumed by the processor):
-    ///   0. `[s]` Signer or Session (session PDA or the user wallet)
-    ///   1. `[s]` Fee payer (paymaster or user wallet)
-    ///   2. `[w]` Program signer PDA
-    ///   3. `[w]` User's WSOL token account (ATA)
-    ///   4. `[w]` Temporary WSOL token account (program-owned)
-    ///   5. `[]` Wrapped SOL mint (So11111111111111111111111111111111111111112)
-    ///   6. `[w]` Stake pool
-    ///   7. `[]` Stake pool withdraw authority
-    ///   8. `[w]` Reserve stake account
-    ///   9. `[w]` User's destination pool token account
-    ///  10. `[w]` Manager fee account
-    ///  11. `[w]` Referrer fee account
-    ///  12. `[w]` Pool token mint
-    ///  13. `[]` Token Program
-    ///  14. `[]` System Program
+    ///   0. `[w]` Stake pool
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[w]` Reserve stake account
+    ///   3. `[w]` User's destination pool token account
+    ///   4. `[w]` Manager fee account
+    ///   5. `[w]` Referrer fee account
+    ///   6. `[w]` Pool token mint
+    ///   7. `[]` System Program
+    ///   8. `[]` Token Program
+    ///   9. `[s]` Signer or Session (session PDA or the user wallet)
+    ///  10. `[]` Wrapped SOL mint (So11111111111111111111111111111111111111112)
+    ///  11. `[s]` Fee payer (paymaster or user wallet)
+    ///  12. `[w]` User's WSOL token account (ATA)
+    ///  13. `[w]` Temporary WSOL token account (program-owned)
+    ///  14. `[w]` Program signer PDA
     ///  15. `[s]` (Optional) Stake pool SOL deposit authority
     DepositWsolWithSession {
         /// amount of lamports to deposit
@@ -783,7 +783,7 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Token program id
     ///  12. `[s]` (Optional) Stake pool SOL withdraw authority
     ///  13. `[]` WSOL mint (native mint, So111…)
-    ///  14. `[s, w]` Fee payer (session or wallet) for idempotent ATA creation
+    ///  14. `[s]` Fee payer (session or wallet) for idempotent ATA creation
     ///  15. `[]` User owner (system account that owns the WSOL ATA)
     ///  16. `[]` System Program
     ///  17. `[w]` Program signer PDA (only present in WSOL path)
@@ -2270,25 +2270,24 @@ pub fn deposit_wsol_with_session(
     lamports_in: u64,
 ) -> Instruction {
     let mut accounts = vec![
-        /* 0  */ AccountMeta::new(*signer_or_session, /*is_signer*/ true),
-        /* 1  */ AccountMeta::new(*fee_payer, /*is_signer*/ true),
-        /* 2  */ AccountMeta::new(*program_signer, false),
-        /* 3  */ AccountMeta::new(*user_wsol_account,  false),
-        /* 4  */ AccountMeta::new(*transient_wsol_account, false),
-        /* 5  */ AccountMeta::new_readonly(*wsol_mint, false),
+        /* --- Core deposit SOL accounts (match DepositSol order) ----------- */
+        /* 0  */ AccountMeta::new(*stake_pool,                   false),
+        /* 1  */ AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        /* 2  */ AccountMeta::new(*reserve_stake_account,        false),
+        /* 3  */ AccountMeta::new(*pool_tokens_to,      false),
+        /* 4  */ AccountMeta::new(*manager_fee_account,          false),
+        /* 5  */ AccountMeta::new(*referrer_pool_tokens_account, false),
+        /* 6  */ AccountMeta::new(*pool_mint,                    false),
+        /* 7  */ AccountMeta::new_readonly(*system_program_id,   false),
+        /* 8  */ AccountMeta::new_readonly(*token_program_id,    false),
 
-        /* --- exact order expected by stake-pool CPI ------------------------ */
-        /* 6  */ AccountMeta::new(*stake_pool,                   false),
-        /* 7  */ AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        /* 8  */ AccountMeta::new(*reserve_stake_account,        false),
-        /* 9  */ AccountMeta::new(*pool_tokens_to,      false),
-        /* 10 */ AccountMeta::new(*manager_fee_account,          false),
-        /* 11 */ AccountMeta::new(*referrer_pool_tokens_account, false),
-        /* 12 */ AccountMeta::new(*pool_mint,                    false),
-        /* 13 */ AccountMeta::new_readonly(*token_program_id,    false),
-
-        // /* ───── Programs & sysvars ───── */
-        /* 14 */ AccountMeta::new_readonly(*system_program_id,   false),
+        /* --- Extra accounts for WSOL ATA creation / validation ------------ */
+        /* 9  */ AccountMeta::new(*signer_or_session, /*is_signer*/ true),
+        /* 10 */ AccountMeta::new_readonly(*wsol_mint, false),
+        /* 11 */ AccountMeta::new(*fee_payer, /*is_signer*/ true),
+        /* 12 */ AccountMeta::new(*user_wsol_account,  false),
+        /* 13 */ AccountMeta::new(*transient_wsol_account, false),
+        /* 14 */ AccountMeta::new(*program_signer, false),
     ];
 
     if let Some(auth) = sol_deposit_authority {

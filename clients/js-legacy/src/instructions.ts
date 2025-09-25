@@ -974,21 +974,24 @@ export class StakePoolInstruction {
     lamports: number;
   }): TransactionInstruction {
     const keys = [
-      { pubkey: params.signerOrSession, isSigner: true, isWritable: true },
-      { pubkey: params.feePayer, isSigner: true, isWritable: true },
-      { pubkey: params.programSigner, isSigner: false, isWritable: true },
-      { pubkey: params.userWsolAccount, isSigner: false, isWritable: true },
-      { pubkey: params.transientWsolPda, isSigner: false, isWritable: true },
-      { pubkey: params.wsolMint, isSigner: false, isWritable: false },
-      { pubkey: params.stakePool, isSigner: false, isWritable: true },
-      { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
-      { pubkey: params.reserveStake, isSigner: false, isWritable: true },
-      { pubkey: params.destinationPoolAccount, isSigner: false, isWritable: true },
-      { pubkey: params.managerFeeAccount, isSigner: false, isWritable: true },
-      { pubkey: params.referralPoolAccount, isSigner: false, isWritable: true },
-      { pubkey: params.poolMint, isSigner: false, isWritable: true },
-      { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      // --- Core deposit SOL accounts (match DepositSol order) -----------
+      /* 0  */ { pubkey: params.stakePool, isSigner: false, isWritable: true },
+      /* 1  */ { pubkey: params.withdrawAuthority, isSigner: false, isWritable: false },
+      /* 2  */ { pubkey: params.reserveStake, isSigner: false, isWritable: true },
+      /* 3  */ { pubkey: params.destinationPoolAccount, isSigner: false, isWritable: true },
+      /* 4  */ { pubkey: params.managerFeeAccount, isSigner: false, isWritable: true },
+      /* 5  */ { pubkey: params.referralPoolAccount, isSigner: false, isWritable: true },
+      /* 6  */ { pubkey: params.poolMint, isSigner: false, isWritable: true },
+      /* 7  */ { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      /* 8  */ { pubkey: params.tokenProgramId, isSigner: false, isWritable: false },
+
+      // --- Extra accounts for WSOL ATA creation / validation ------------
+      /* 9  */ { pubkey: params.signerOrSession, isSigner: true, isWritable: true },
+      /* 10 */ { pubkey: params.wsolMint, isSigner: false, isWritable: false },
+      /* 11 */ { pubkey: params.feePayer, isSigner: true, isWritable: true },
+      /* 12 */ { pubkey: params.userWsolAccount, isSigner: false, isWritable: true },
+      /* 13 */ { pubkey: params.transientWsolPda, isSigner: false, isWritable: true },
+      /* 14 */ { pubkey: params.programSigner, isSigner: false, isWritable: true },
     ];
 
     if (params.solDepositAuthority) {
