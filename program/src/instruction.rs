@@ -781,12 +781,12 @@ pub enum StakePoolInstruction {
     ///   9. `[]` Stake history sysvar
     ///  10. `[]` Stake program account
     ///  11. `[]` Token program id
-    ///  12. `[s]` (Optional) Stake pool SOL withdraw authority
-    ///  13. `[]` WSOL mint (native mint, So111…)
-    ///  14. `[s]` Fee payer (session or wallet) for idempotent ATA creation
-    ///  15. `[]` User owner (system account that owns the WSOL ATA)
-    ///  16. `[]` System Program
-    ///  17. `[w]` Program signer PDA (only present in WSOL path)
+    ///  12. `[]` WSOL mint (native mint, So111…)
+    ///  13. `[s]` Fee payer (session or wallet) for idempotent ATA creation
+    ///  14. `[]` User owner (system account that owns the WSOL ATA)
+    ///  15. `[]` System Program
+    ///  16. `[w]` Program signer PDA (only present in WSOL path)
+    ///  17. `[s]` (Optional) Stake pool SOL withdraw authority
     WithdrawWsolWithSession(u64),
 }
 
