@@ -1,6 +1,6 @@
 {
   "name": "@firstset/spl-stake-pool",
-  "version": "1.1.11",
+  "version": "1.1.12",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "build": "tsc && cross-env NODE_ENV=production rollup -c",
