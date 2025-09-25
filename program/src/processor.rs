@@ -3500,6 +3500,9 @@ impl Processor {
         ];
         if let Ok(sol_withdraw_auth_info) = sol_withdraw_auth_res {
             withdraw_sol_accts.push(sol_withdraw_auth_info.clone()); // 12 optional
+        } else {
+            // We need to add a dummy account to preserve order of accounts
+            withdraw_sol_accts.push(system_program_info.clone()); // 12 must include when no authority is provided
         }
 
         // Program signer goes last to preserve integrity of other code paths upstream of `process_withdraw_sol`
