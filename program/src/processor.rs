@@ -19,10 +19,14 @@ use {
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, EPHEMERAL_STAKE_SEED_PREFIX,
         TRANSIENT_STAKE_SEED_PREFIX,
-    }, borsh::BorshDeserialize, fogo_sessions_sdk::{
+    },
+    borsh::BorshDeserialize,
+    fogo_sessions_sdk::{
         session::Session,
-        token::{instruction::transfer_checked, instruction::burn, PROGRAM_SIGNER_SEED},
-    }, num_traits::FromPrimitive, solana_program::{
+        token::{instruction::burn, instruction::transfer_checked, PROGRAM_SIGNER_SEED},
+    },
+    num_traits::FromPrimitive,
+    solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh1::try_from_slice_unchecked,
         clock::{Clock, Epoch},
@@ -36,11 +40,15 @@ use {
         rent::Rent,
         stake, system_instruction, system_program,
         sysvar::Sysvar,
-    }, spl_associated_token_account::get_associated_token_address, spl_token::{instruction as token_ix, native_mint}, spl_token_2022::{
+    },
+    spl_associated_token_account::get_associated_token_address,
+    spl_token::{instruction as token_ix, native_mint},
+    spl_token_2022::{
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
         state::Mint,
-    }, std::num::NonZeroU32
+    },
+    std::num::NonZeroU32,
 };
 
 /// Deserialize the stake state from `AccountInfo`
@@ -1173,7 +1181,6 @@ impl Processor {
         Ok(())
     }
 
-    
     /// Processes [`DepositWsolWithSession`](
     ///     crate::instruction::StakePoolInstruction::DepositWsolWithSession
     /// ).
@@ -1183,31 +1190,29 @@ impl Processor {
         accounts: &[AccountInfo],
         deposit_lamports: u64,
     ) -> ProgramResult {
-        
-        // --- EXACT same order as DepositSol for the first 9 accounts 
+        // --- EXACT same order as DepositSol for the first 9 accounts
         // (excludes `from_user_lamports_info` which is also the reserve in our WSOL deposit path) ---
         let account_info_iter = &mut accounts.iter();
-        let stake_pool_info               = next_account_info(account_info_iter)?; // 0 [w]
+        let stake_pool_info = next_account_info(account_info_iter)?; // 0 [w]
         let stake_pool_withdraw_auth_info = next_account_info(account_info_iter)?; // 1 []
-        let reserve_stake_info            = next_account_info(account_info_iter)?; // 2 [w]
-        let pool_tokens_to_info           = next_account_info(account_info_iter)?; // 3 [w]
-        let manager_fee_info              = next_account_info(account_info_iter)?; // 4 [w]
-        let referrer_pool_tokens_info     = next_account_info(account_info_iter)?; // 5 [w]
-        let pool_mint_info                = next_account_info(account_info_iter)?; // 6 [w]
-        let system_program_info           = next_account_info(account_info_iter)?; // 7 []
-        let token_program_info            = next_account_info(account_info_iter)?; // 8 []
-        
+        let reserve_stake_info = next_account_info(account_info_iter)?; // 2 [w]
+        let pool_tokens_to_info = next_account_info(account_info_iter)?; // 3 [w]
+        let manager_fee_info = next_account_info(account_info_iter)?; // 4 [w]
+        let referrer_pool_tokens_info = next_account_info(account_info_iter)?; // 5 [w]
+        let pool_mint_info = next_account_info(account_info_iter)?; // 6 [w]
+        let system_program_info = next_account_info(account_info_iter)?; // 7 []
+        let token_program_info = next_account_info(account_info_iter)?; // 8 []
+
         // --- Extra accounts for WSOL ATA creation / validation ---
-        let signer_or_session_info        = next_account_info(account_info_iter)?; // 9 [s]
-        let wsol_mint_info                = next_account_info(account_info_iter)?; // 10 []
-        let fee_payer_info                = next_account_info(account_info_iter)?; // 11 [s]
-        let user_wsol_info                = next_account_info(account_info_iter)?; // 12 [w]
-        let transient_wsol_info           = next_account_info(account_info_iter)?; // 13 [w]
-        let program_signer_info           = next_account_info(account_info_iter)?; // 14 [w]
+        let signer_or_session_info = next_account_info(account_info_iter)?; // 9 [s]
+        let wsol_mint_info = next_account_info(account_info_iter)?; // 10 []
+        let fee_payer_info = next_account_info(account_info_iter)?; // 11 [s]
+        let user_wsol_info = next_account_info(account_info_iter)?; // 12 [w]
+        let transient_wsol_info = next_account_info(account_info_iter)?; // 13 [w]
+        let program_signer_info = next_account_info(account_info_iter)?; // 14 [w]
 
         // Optional SOL deposit authority (needs to be at the end since it is not always present)
-        let sol_deposit_auth_info         = account_info_iter.next(); // 15 optional [s]
-
+        let sol_deposit_auth_info = account_info_iter.next(); // 15 optional [s]
 
         // ──────────────────────────────────────────────────────────────────────
         // 1. Basic sanity checks
@@ -1221,7 +1226,7 @@ impl Processor {
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
-        
+
         // Check the token program is the Pools Token program
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
@@ -1252,15 +1257,12 @@ impl Processor {
         }
 
         // Who is the *real* user?
-        let user_pubkey = Session::extract_user_from_signer_or_session(
-            signer_or_session_info,
-            program_id,
-        )?;
+        let user_pubkey =
+            Session::extract_user_from_signer_or_session(signer_or_session_info, program_id)?;
 
         // Verify `user_wsol_info` is that user’s ATA for WSOL
-        let expected_wsol_ata =
-            get_associated_token_address(&user_pubkey, wsol_mint_info.key);
-        if expected_wsol_ata != *user_wsol_info.key{
+        let expected_wsol_ata = get_associated_token_address(&user_pubkey, wsol_mint_info.key);
+        if expected_wsol_ata != *user_wsol_info.key {
             msg!("user_wsol_account is not the user’s ATA for WSOL");
             return Err(ProgramError::InvalidAccountData);
         }
@@ -1283,15 +1285,14 @@ impl Processor {
         if !transient_wsol_info.data_is_empty() {
             msg!("transient_wsol PDA already exists; must be fresh each call");
             return Err(ProgramError::InvalidAccountData);
-        } 
+        }
 
         // ──────────────────────────────────────────────────────────────────────
         // a) Create the account – owner = SPL Token program
         // ──────────────────────────────────────────────────────────────────────
-        
+
         // Derive the *expected* PDA for the transient WSOL account
-        let (expected_transient_pda, transient_bump) =
-        Pubkey::find_program_address(
+        let (expected_transient_pda, transient_bump) = Pubkey::find_program_address(
             &[b"transient_wsol", user_pubkey.as_ref()], // ← user-specific PDA keeps things unique
             program_id,
         );
@@ -1305,18 +1306,15 @@ impl Processor {
         let rent = Rent::get()?;
         let rent_lamports = rent.minimum_balance(spl_token::state::Account::LEN);
         let create_ix = solana_program::system_instruction::create_account(
-            fee_payer_info.key,                  // payer (wallet or session key)
-            transient_wsol_info.key,                     // new account address (PDA)
-            rent_lamports,                             // rent-exempt lamports
-            spl_token::state::Account::LEN as u64,     // space for a token account
-            token_program_info.key,                      // OWNER **must** be SPL-Token!
+            fee_payer_info.key,                    // payer (wallet or session key)
+            transient_wsol_info.key,               // new account address (PDA)
+            rent_lamports,                         // rent-exempt lamports
+            spl_token::state::Account::LEN as u64, // space for a token account
+            token_program_info.key,                // OWNER **must** be SPL-Token!
         );
 
-        let transient_seeds: &[&[u8]] = &[
-            b"transient_wsol",
-            user_pubkey.as_ref(),
-            &[transient_bump],
-        ];
+        let transient_seeds: &[&[u8]] =
+            &[b"transient_wsol", user_pubkey.as_ref(), &[transient_bump]];
 
         // The *payer* (`signer_or_session_info`) already signed the outer tx,
         // but the NEW account (a PDA) must also appear as a signer – therefore
@@ -1324,8 +1322,8 @@ impl Processor {
         invoke_signed(
             &create_ix,
             &[
-                fee_payer_info.clone(),          // payer
-                transient_wsol_info.clone(),             // new account
+                fee_payer_info.clone(),      // payer
+                transient_wsol_info.clone(), // new account
                 system_program_info.clone(),
             ],
             &[transient_seeds],
@@ -1336,9 +1334,9 @@ impl Processor {
         // ──────────────────────────────────────────────────────────────────────
         let init_ix = spl_token::instruction::initialize_account3(
             token_program_info.key,
-            transient_wsol_info.key,        // the account we just created
-            wsol_mint_info.key,             // mint = WSOL
-            program_signer_info.key,         // owner/authority = program_signer PDA
+            transient_wsol_info.key, // the account we just created
+            wsol_mint_info.key,      // mint = WSOL
+            program_signer_info.key, // owner/authority = program_signer PDA
         )?;
 
         // `program_signer_info` (program_signer) must sign this CPI,
@@ -1346,9 +1344,9 @@ impl Processor {
         invoke(
             &init_ix,
             &[
-                transient_wsol_info.clone(),             // token account (not signer)
-                wsol_mint_info.clone(),                  // mint
-            ],        // signs as program_signer_info
+                transient_wsol_info.clone(), // token account (not signer)
+                wsol_mint_info.clone(),      // mint
+            ], // signs as program_signer_info
         )?;
 
         // ──────────────────────────────────────────────────────────────────────
@@ -1368,7 +1366,7 @@ impl Processor {
             signer_or_session_info.key,
             Some(program_signer_info.key),
             deposit_lamports,
-            9
+            9,
         )?;
 
         // Invoke the transfer instruction
@@ -1379,22 +1377,22 @@ impl Processor {
                 wsol_mint_info.clone(),
                 transient_wsol_info.clone(),
                 signer_or_session_info.clone(),
-                // We assume that this instruction always comes from a session, 
+                // We assume that this instruction always comes from a session,
                 // so we always pass the program_signer as the extra signer
-                program_signer_info.clone(),   // extra signer
+                program_signer_info.clone(), // extra signer
                 token_program_info.clone(),
             ],
-            &[program_signer_seeds],                // ← seeds for program_signer PDA
+            &[program_signer_seeds], // ← seeds for program_signer PDA
         )?;
 
         // Check the balance of the transient WSOL account equals to the deposit_lamports
-        let transient_wsol_balance = spl_token::state::Account::unpack(&transient_wsol_info.data.borrow())?.amount;
+        let transient_wsol_balance =
+            spl_token::state::Account::unpack(&transient_wsol_info.data.borrow())?.amount;
         if transient_wsol_balance != deposit_lamports {
             msg!("transient_wsol_balance: {:?}", transient_wsol_balance);
             msg!("deposit_lamports: {:?}", deposit_lamports);
             return Err(ProgramError::InvalidAccountData);
         }
-
 
         // ──────────────────────────────────────────────────────────────────────
         // 4. Close transient WSOL account → unwrap into SOL
@@ -1404,22 +1402,22 @@ impl Processor {
         let close_ix = token_ix::close_account(
             token_program_info.key,
             transient_wsol_info.key,
-            program_signer_info.key,   // SOL lands in the program so we can refund rent
-            program_signer_info.key,   // authority = program_signer PDA
-            &[],                    
+            program_signer_info.key, // SOL lands in the program so we can refund rent
+            program_signer_info.key, // authority = program_signer PDA
+            &[],
         )?;
-        
+
         // must be `invoke_signed`, because the authority is the PDA
         invoke_signed(
             &close_ix,
             &[
                 transient_wsol_info.clone(),
-                program_signer_info.clone(),   // destination & signer
-                program_signer_info.clone(),   // authority (same as destination)
+                program_signer_info.clone(), // destination & signer
+                program_signer_info.clone(), // authority (same as destination)
             ],
-            &[program_signer_seeds],               // program_signer PDA seeds
+            &[program_signer_seeds], // program_signer PDA seeds
         )?;
-        
+
         // ──────────────────────────────────────────────────────────────────────
         // 5. Refund rent
         // ──────────────────────────────────────────────────────────────────────
@@ -1429,15 +1427,15 @@ impl Processor {
             fee_payer_info.key,
             rent_lamports,
         );
-        
+
         invoke_signed(
-        &refund_ix,   
-        &[
-            program_signer_info.clone(),
-            fee_payer_info.clone(),
-            system_program_info.clone(),
-        ],
-        &[program_signer_seeds],
+            &refund_ix,
+            &[
+                program_signer_info.clone(),
+                fee_payer_info.clone(),
+                system_program_info.clone(),
+            ],
+            &[program_signer_seeds],
         )?;
 
         // ──────────────────────────────────────────────────────────────────────
@@ -1457,11 +1455,11 @@ impl Processor {
         invoke_signed(
             &forward_ix,
             &[
-            program_signer_info.clone(),
-            reserve_stake_info.clone(),
-            system_program_info.clone(),
-        ],
-        &[program_signer_seeds],
+                program_signer_info.clone(),
+                reserve_stake_info.clone(),
+                system_program_info.clone(),
+            ],
+            &[program_signer_seeds],
         )?;
 
         // ──────────────────────────────────────────────────────────────────────
@@ -1484,13 +1482,7 @@ impl Processor {
         if let Some(auth) = sol_deposit_auth_info {
             new_accounts.push(auth.clone());
         }
-        Self::process_deposit_sol(
-            program_id,
-            &new_accounts,
-            deposit_lamports,
-            None,
-            true,
-        )
+        Self::process_deposit_sol(program_id, &new_accounts, deposit_lamports, None, true)
     }
 
     /// Processes `DecreaseValidatorStake` instruction.
@@ -3352,28 +3344,28 @@ impl Processor {
     ) -> ProgramResult {
         // --- EXACT same order as WithdrawSol for the first 11 accounts ---
         let account_info_iter = &mut accounts.iter();
-        let stake_pool_info           = next_account_info(account_info_iter)?; // 0  [w]
-        let withdraw_authority_info   = next_account_info(account_info_iter)?; // 1  []
-        let signer_or_session         = next_account_info(account_info_iter)?; // 2  [s] (user_transfer_authority)
-        let burn_from_pool_info       = next_account_info(account_info_iter)?; // 3  [w]
-        let reserve_stake_info        = next_account_info(account_info_iter)?; // 4  [w]
-        let user_wsol_info              = next_account_info(account_info_iter)?; // 5  [w]  <-- destination
-        let manager_fee_info          = next_account_info(account_info_iter)?; // 6  [w]
-        let pool_mint_info            = next_account_info(account_info_iter)?; // 7  [w]
-        let clock_info                = next_account_info(account_info_iter)?; // 8  []
-        let stake_history_info        = next_account_info(account_info_iter)?; // 9  []
-        let stake_program_info        = next_account_info(account_info_iter)?; // 10 []
-        let token_program_info        = next_account_info(account_info_iter)?; // 11 []
+        let stake_pool_info = next_account_info(account_info_iter)?; // 0  [w]
+        let withdraw_authority_info = next_account_info(account_info_iter)?; // 1  []
+        let signer_or_session = next_account_info(account_info_iter)?; // 2  [s] (user_transfer_authority)
+        let burn_from_pool_info = next_account_info(account_info_iter)?; // 3  [w]
+        let reserve_stake_info = next_account_info(account_info_iter)?; // 4  [w]
+        let user_wsol_info = next_account_info(account_info_iter)?; // 5  [w]  <-- destination
+        let manager_fee_info = next_account_info(account_info_iter)?; // 6  [w]
+        let pool_mint_info = next_account_info(account_info_iter)?; // 7  [w]
+        let clock_info = next_account_info(account_info_iter)?; // 8  []
+        let stake_history_info = next_account_info(account_info_iter)?; // 9  []
+        let stake_program_info = next_account_info(account_info_iter)?; // 10 []
+        let token_program_info = next_account_info(account_info_iter)?; // 11 []
 
         // --- Extra accounts for WSOL ATA creation / validation ---
-        let wsol_mint_info              = next_account_info(account_info_iter)?; // 12 []
-        let fee_payer_info              = next_account_info(account_info_iter)?; // 13 [s] payer for ATA (session or wallet)
-        let user_owner_info             = next_account_info(account_info_iter)?; // 14 [] the user's system account (owner of ATA)
-        let system_program_info         = next_account_info(account_info_iter)?; // 15 []
-        let program_signer_info         = next_account_info(account_info_iter)?; // 16 [] (program signer)
+        let wsol_mint_info = next_account_info(account_info_iter)?; // 12 []
+        let fee_payer_info = next_account_info(account_info_iter)?; // 13 [s] payer for ATA (session or wallet)
+        let user_owner_info = next_account_info(account_info_iter)?; // 14 [] the user's system account (owner of ATA)
+        let system_program_info = next_account_info(account_info_iter)?; // 15 []
+        let program_signer_info = next_account_info(account_info_iter)?; // 16 [] (program signer)
 
         // Optional SOL withdraw authority (needs to be at the end since it is not always present)
-        let sol_withdraw_auth_res     = next_account_info(account_info_iter);  // 17 optional [s]
+        let sol_withdraw_auth_res = next_account_info(account_info_iter); // 17 optional [s]
 
         // ──────────────────────────────────────────────────────────────────────
         // 1. Basic sanity checks
@@ -3387,7 +3379,7 @@ impl Processor {
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
-        
+
         // Check the token program is the Pools Token program
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
@@ -3418,15 +3410,12 @@ impl Processor {
         }
 
         // Who is the *real* user?
-        let user_pubkey = Session::extract_user_from_signer_or_session(
-            signer_or_session,
-            program_id,
-        )?;
+        let user_pubkey =
+            Session::extract_user_from_signer_or_session(signer_or_session, program_id)?;
 
         // Verify `user_wsol_info` is that user’s ATA for WSOL
-        let expected_wsol_ata =
-            get_associated_token_address(&user_pubkey, wsol_mint_info.key);
-        if expected_wsol_ata != *user_wsol_info.key{
+        let expected_wsol_ata = get_associated_token_address(&user_pubkey, wsol_mint_info.key);
+        if expected_wsol_ata != *user_wsol_info.key {
             msg!("user_wsol_account is not the user's ATA for WSOL");
             return Err(ProgramError::InvalidAccountData);
         }
@@ -3443,23 +3432,28 @@ impl Processor {
         // 2. Create the ATA if missing (idempotent)
         // ──────────────────────────────────────────────────────────────────────
 
+        let mut rent_to_refund = 0u64;
+        let mut ata_created = false;
+
         if user_wsol_info.data_is_empty() {
             // The associated-token-program create requires these accounts:
             //   payer, associated_token, owner, mint, system_program, token_program
             // Ensure payer is writable + signer in your instruction metas.
+            ata_created = true;
+            rent_to_refund = Rent::get()?.minimum_balance(spl_token::state::Account::LEN);
             let create_ix =
                 spl_associated_token_account::instruction::create_associated_token_account(
-                    fee_payer_info.key,          // payer
-                    &user_pubkey,              // owner of ATA
-                    wsol_mint_info.key,          // native mint
-                    token_program_info.key,    // token program id
+                    fee_payer_info.key,     // payer
+                    &user_pubkey,           // owner of ATA
+                    wsol_mint_info.key,     // native mint
+                    token_program_info.key, // token program id
                 );
             invoke(
                 &create_ix,
                 &[
                     fee_payer_info.clone(),
                     user_wsol_info.clone(),
-                    user_owner_info.clone(),     // == user_pubkey as a system account
+                    user_owner_info.clone(), // == user_pubkey as a system account
                     wsol_mint_info.clone(),
                     system_program_info.clone(),
                     token_program_info.clone(),
@@ -3468,8 +3462,7 @@ impl Processor {
         } else {
             // Account exists, verify it's valid
             let token_account = spl_token::state::Account::unpack(&user_wsol_info.data.borrow())?;
-            if token_account.mint != *wsol_mint_info.key || 
-            token_account.owner != user_pubkey {
+            if token_account.mint != *wsol_mint_info.key || token_account.owner != user_pubkey {
                 msg!("Account already exists, but is invalid");
                 msg!("token_account.mint: {:?}", token_account.mint);
                 msg!("wsol_mint_info.key: {:?}", wsol_mint_info.key);
@@ -3483,6 +3476,17 @@ impl Processor {
         // 3. Process the withdrawal
         // ──────────────────────────────────────────────────────────────────────
 
+        // Determine PDA bump for `program_signer_info` (= program signer)
+        let (expected_pda, pda_bump) =
+            Pubkey::find_program_address(&[PROGRAM_SIGNER_SEED], program_id);
+        if expected_pda != *program_signer_info.key {
+            msg!("program_signer_info must be the program-signer PDA");
+            return Err(ProgramError::InvalidSeeds);
+        }
+        let program_signer_seeds: &[&[u8]] = &[PROGRAM_SIGNER_SEED, &[pda_bump]];
+
+        let initial_program_signer_lamports = program_signer_info.lamports();
+
         // Rebuild the exact account slice for the inner WithdrawSol delegate
         let mut withdraw_sol_accts: Vec<AccountInfo> = vec![
             stake_pool_info.clone(),         // 0
@@ -3490,7 +3494,7 @@ impl Processor {
             signer_or_session.clone(),       // 2
             burn_from_pool_info.clone(),     // 3
             reserve_stake_info.clone(),      // 4
-            user_wsol_info.clone(),            // 5 (destination)
+            program_signer_info.clone(),     // 5 (destination for SOL)
             manager_fee_info.clone(),        // 6
             pool_mint_info.clone(),          // 7
             clock_info.clone(),              // 8
@@ -3508,8 +3512,70 @@ impl Processor {
         // Program signer goes last to preserve integrity of other code paths upstream of `process_withdraw_sol`
         withdraw_sol_accts.push(program_signer_info.clone()); // 13 (program signer)
 
-        // Delegate to core withdraw: moves lamports to `user_wsol_info`
+        // Delegate to core withdraw: stage lamports on the program signer PDA
         Self::process_withdraw_sol(program_id, &withdraw_sol_accts, pool_tokens, None, true)?;
+
+        let lamports_received = program_signer_info
+            .lamports()
+            .saturating_sub(initial_program_signer_lamports);
+
+        if lamports_received == 0 {
+            msg!("Withdraw did not deliver any lamports to program signer");
+            return Err(StakePoolError::WithdrawalTooSmall.into());
+        }
+
+        if ata_created {
+            if lamports_received < rent_to_refund {
+                msg!(
+                    "Withdrawal amount {} cannot cover rent {}",
+                    lamports_received,
+                    rent_to_refund
+                );
+                return Err(StakePoolError::WithdrawalTooSmall.into());
+            }
+        } else {
+            rent_to_refund = 0;
+        }
+
+        let net_user_lamports = lamports_received
+            .checked_sub(rent_to_refund)
+            .ok_or(StakePoolError::WithdrawalTooSmall)?;
+
+        if net_user_lamports > 0 {
+            let to_user_ix = system_instruction::transfer(
+                program_signer_info.key,
+                user_wsol_info.key,
+                net_user_lamports,
+            );
+
+            invoke_signed(
+                &to_user_ix,
+                &[
+                    program_signer_info.clone(),
+                    user_wsol_info.clone(),
+                    system_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+        }
+
+        if rent_to_refund > 0 {
+            let refund_ix = system_instruction::transfer(
+                program_signer_info.key,
+                fee_payer_info.key,
+                rent_to_refund,
+            );
+
+            invoke_signed(
+                &refund_ix,
+                &[
+                    program_signer_info.clone(),
+                    fee_payer_info.clone(),
+                    system_program_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
+        }
 
         // Sync native so token-amount reflects the lamports
         let sync_ix = token_ix::sync_native(token_program_info.key, user_wsol_info.key)?;
@@ -3517,7 +3583,7 @@ impl Processor {
 
         Ok(())
     }
-    
+
     /// Processes [`WithdrawSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_sol(
@@ -3542,7 +3608,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
         let maybe_program_signer_info = next_account_info(account_info_iter); // Not exposed externally, only present in the WSOL path
-        
+
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
@@ -3647,18 +3713,27 @@ impl Processor {
             // The *payer* (`signer_or_session_info`) already signed the outer tx,
             // but the NEW account (a PDA) must also appear as a signer – therefore
             // we invoke with `invoke_signed` and pass `program_signer_seeds`.
-            invoke_signed(&burn_ix, &[burn_from_pool_info.clone(), pool_mint_info.clone(), user_transfer_authority_info.clone(), program_signer_info.clone()], &[program_signer_seeds])?;
+            invoke_signed(
+                &burn_ix,
+                &[
+                    burn_from_pool_info.clone(),
+                    pool_mint_info.clone(),
+                    user_transfer_authority_info.clone(),
+                    program_signer_info.clone(),
+                ],
+                &[program_signer_seeds],
+            )?;
 
             if pool_tokens_fee > 0 {
                 let fee_ix = transfer_checked(
                     token_program_info.key,
-                    burn_from_pool_info.key,       // source (user pool-token ATA)
-                    pool_mint_info.key,            // mint
-                    manager_fee_info.key,          // destination
+                    burn_from_pool_info.key, // source (user pool-token ATA)
+                    pool_mint_info.key,      // mint
+                    manager_fee_info.key,    // destination
                     user_transfer_authority_info.key, // session authority
-                    Some(program_signer_info.key),   // extra PDA signer
+                    Some(program_signer_info.key), // extra PDA signer
                     pool_tokens_fee,
-                    decimals,                      // pool mint decimals
+                    decimals, // pool mint decimals
                 )?;
                 invoke_signed(
                     &fee_ix,
