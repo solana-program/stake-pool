@@ -658,3 +658,55 @@ async fn fail_additional_with_increasing() {
         ) if code == StakePoolError::WrongStakeStake as u32
     );
 }
+
+#[test_case(DecreaseInstruction::Additional; "additional")]
+#[test_case(DecreaseInstruction::Reserve; "reserve")]
+#[test_case(DecreaseInstruction::Deprecated; "deprecated")]
+#[tokio::test]
+async fn fail_validator_marked_for_removal_decrease_stake(instruction_type: DecreaseInstruction) {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake,
+        _deposit_info,
+        decrease_lamports,
+        _reserve_lamports,
+    ) = setup().await;
+
+    // First, remove the validator from the pool to mark it for removal
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await;
+    assert!(error.is_none(), "Failed to remove validator: {:?}", error);
+
+    // Now attempt to decrease stake on the removed validator - this should fail
+    let error = stake_pool_accounts
+        .decrease_validator_stake_either(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            decrease_lamports,
+            validator_stake.transient_stake_seed,
+            instruction_type,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    // Should fail with ValidatorNotFound error
+    assert_matches!(
+        error,
+        TransactionError::InstructionError(
+            _,
+            InstructionError::Custom(code)
+        ) if code == StakePoolError::ValidatorNotFound as u32
+    );
+}
