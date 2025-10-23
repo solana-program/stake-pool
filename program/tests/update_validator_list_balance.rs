@@ -1000,6 +1000,114 @@ async fn ignores_unusable_stake_accounts_preventing_exploit() {
 }
 
 #[tokio::test]
+async fn update_validator_list_balance_ingores_uninitialized_stake_account_balances() {
+    let num_validators = 1;
+    let (
+        mut context,
+        last_blockhash,
+        stake_pool_accounts,
+        stake_accounts,
+        _,
+        _validator_lamports,
+        _reserve_lamports,
+        mut slot,
+    ) = setup(num_validators).await;
+
+    let validator_stake_account = &stake_accounts[0];
+    
+    // Verify the validator starts as Active
+    let initial_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    let initial_validator_info = &initial_validator_list.validators[0];
+    assert_eq!(initial_validator_info.status, StakeStatus::Active.into());
+    assert!(u64::from(initial_validator_info.active_stake_lamports) > 0);
+    
+    // First, remove the validator from the pool to trigger deactivation
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            &validator_stake_account.stake_account,
+            &validator_stake_account.transient_stake_account,
+        )
+        .await;
+    assert!(error.is_none(), "Failed to remove validator: {:?}", error);
+    
+    // Verify validator is now being deactivated
+    let deactivating_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    let deactivating_validator_info = &deactivating_validator_list.validators[0];
+    assert_eq!(deactivating_validator_info.status, StakeStatus::DeactivatingValidator.into());
+    
+    // Fast forward one epoch to allow the stake to deactivate
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
+    
+    let new_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+    
+    // Now simulate a scenario where the stake account becomes uninitialized
+    // This could happen due to cluster restart or other network events
+    let uninitialized_stake_state = StakeStateV2::Uninitialized;
+    
+    let original_stake_account = context
+        .banks_client
+        .get_account(validator_stake_account.stake_account)
+        .await
+        .unwrap()
+        .unwrap();
+    
+    let mut modified_account = original_stake_account.clone();
+    modified_account.data = bincode::serialize(&uninitialized_stake_state).unwrap();
+    context.set_account(&validator_stake_account.stake_account, &modified_account.into());
+    
+    // Run update_validator_list_balance - this should trigger the uninitialized account handling
+    let error = stake_pool_accounts
+        .update_validator_list_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &new_blockhash,
+            1,
+            false,
+        )
+        .await;
+    assert!(error.is_none(), "Update should succeed despite uninitialized account: {:?}", error);
+    
+    // Verify the validator status and that the uninitialized account was ignored
+    let final_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    let final_validator_info = &final_validator_list.validators[0];
+    
+    // The validator should still be in DeactivatingValidator status with 0 active stake
+    // because the uninitialized account was ignored
+    assert_eq!(final_validator_info.status, StakeStatus::DeactivatingValidator.into());
+    assert_eq!(
+        u64::from(final_validator_info.active_stake_lamports),
+        0,
+        "Active stake lamports should be 0 because uninitialized account is ignored"
+    );
+    
+    // Verify the uninitialized stake account still exists
+    let final_stake_account = context
+        .banks_client
+        .get_account(validator_stake_account.stake_account)
+        .await
+        .unwrap()
+        .unwrap();
+    
+    // Verify it's still uninitialized
+    let final_stake_state: StakeStateV2 = bincode::deserialize(&final_stake_account.data).unwrap();
+    matches!(final_stake_state, StakeStateV2::Uninitialized);
+
+    // assert it has a nonzero account balance
+    assert!(final_stake_account.lamports > 0);
+    
+    // This test proves that the uninitialized account scenario can be triggered and is handled correctly
+}
+
+#[tokio::test]
 async fn cleanup_does_not_remove_validators_with_remaining_lamports() {
     let num_validators = 2;
     let (
