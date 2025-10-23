@@ -3,6 +3,7 @@ mod helpers;
 
 use {
     bincode,
+    borsh,
     helpers::*,
     solana_program::{
         borsh1::try_from_slice_unchecked, instruction::InstructionError, program_pack::Pack,
@@ -11,6 +12,7 @@ use {
     solana_sdk::{
         hash::Hash, signature::{Keypair, Signer}, stake::state::StakeStateV2, transaction::TransactionError,
     },
+    spl_pod::primitives::PodU64,
     spl_stake_pool::{
         error::StakePoolError,
         state::{StakePool, StakeStatus, ValidatorList},
@@ -995,4 +997,133 @@ async fn ignores_unusable_stake_accounts_preventing_exploit() {
     assert_eq!(final_stake_pool.total_lamports, initial_stake_pool.total_lamports);
     
     // This test proves fix for "only count active validator stakes if they're usable by the pool"
+}
+
+#[tokio::test]
+async fn cleanup_does_not_remove_validators_with_remaining_lamports() {
+    let num_validators = 2;
+    let (
+        mut context,
+        last_blockhash,
+        stake_pool_accounts,
+        stake_accounts,
+        _,
+        _validator_lamports,
+        _reserve_lamports,
+        _slot,
+    ) = setup(num_validators).await;
+
+    // Remove 2 validators from the pool
+    for stake_account in &stake_accounts {
+        let error = stake_pool_accounts
+            .remove_validator_from_pool(
+                &mut context.banks_client,
+                &context.payer,
+                &last_blockhash,
+                &stake_account.stake_account,
+                &stake_account.transient_stake_account,
+            )
+            .await;
+        assert!(error.is_none(), "Failed to remove validator: {:?}", error);
+    }
+
+    // Verify both validators are being deactivated (DeactivatingValidator status)
+    let validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    assert_eq!(validator_list.validators.len(), 2);
+    for validator_info in &validator_list.validators {
+        assert_eq!(validator_info.status, StakeStatus::DeactivatingValidator.into());
+    }
+
+    // Fast forward one epoch to allow the deactivating stakes to become inactive
+    let current_slot = context.banks_client.get_root_slot().await.unwrap();
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    let next_epoch_slot = current_slot + slots_per_epoch;
+    context.warp_to_slot(next_epoch_slot).unwrap();
+
+    // Update validator list balance to process the now-inactive stakes
+    // This should change status from DeactivatingValidator to ReadyForRemoval
+    let error = stake_pool_accounts
+        .update_validator_list_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            2, // Process both validators
+            false,
+        )
+        .await;
+    assert!(error.is_none(), "Update should succeed: {:?}", error);
+
+    // Verify both validators are now ReadyForRemoval
+    let updated_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    assert_eq!(updated_validator_list.validators.len(), 2);
+    for validator_info in &updated_validator_list.validators {
+        assert_eq!(validator_info.status, StakeStatus::ReadyForRemoval.into());
+    }
+
+    // Now manually modify the first validator to have some remaining active lamports
+    // This simulates a scenario where cleanup is called but one validator still has funds
+    let mut modified_validator_list = updated_validator_list.clone();
+    modified_validator_list.validators[0].active_stake_lamports = PodU64::from(1_000_000u64); // 1 SOL remaining
+    modified_validator_list.validators[0].transient_stake_lamports = PodU64::from(0u64); // No transient stake
+
+    // Update the validator list with the modified data
+    let validator_list_account = context
+        .banks_client
+        .get_account(stake_pool_accounts.validator_list.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+    let mut modified_account = validator_list_account.clone();
+
+    let mut serialized_data = borsh::to_vec(&modified_validator_list).unwrap();
+    serialized_data.resize(modified_account.data.len(), 0);
+    modified_account.data = serialized_data;
+    context.set_account(&stake_pool_accounts.validator_list.pubkey(), &modified_account.into());
+
+    // Verify the validator setup is as intended (2 validators ready for removal, one with remaining lamports)
+    let pre_cleanup_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    assert_eq!(pre_cleanup_validator_list.validators.len(), 2);
+    assert_eq!(pre_cleanup_validator_list.validators[0].status, StakeStatus::ReadyForRemoval.into());
+    assert_eq!(u64::from(pre_cleanup_validator_list.validators[0].active_stake_lamports), 1_000_000);
+    assert_eq!(u64::from(pre_cleanup_validator_list.validators[0].transient_stake_lamports), 0);
+    assert_eq!(pre_cleanup_validator_list.validators[1].status, StakeStatus::ReadyForRemoval.into());
+    assert_eq!(u64::from(pre_cleanup_validator_list.validators[1].active_stake_lamports), 0);
+    assert_eq!(u64::from(pre_cleanup_validator_list.validators[1].transient_stake_lamports), 0);
+
+    // Run cleanup_removed_validator_entries
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+        )
+        .await;
+    assert!(error.is_none(), "Cleanup should succeed: {:?}", error);
+
+    // Verify that only the validator with 0 lamports was removed
+    let post_cleanup_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    
+    // Should have 1 validator remaining (the one with active lamports)
+    assert_eq!(
+        post_cleanup_validator_list.validators.len(), 
+        1,
+        "Only validator with 0 lamports should have been removed"
+    );
+    
+    // The remaining validator should be the one with active lamports
+    assert_eq!(
+        u64::from(post_cleanup_validator_list.validators[0].active_stake_lamports),
+        1_000_000,
+        "Validator with remaining lamports should not have been removed"
+    );
+    assert_eq!(
+        post_cleanup_validator_list.validators[0].status,
+        StakeStatus::ReadyForRemoval.into(),
+        "Validator status should remain ReadyForRemoval"
+    );
+
+    // This test proves that ValidatorStakeInfo::is_removed() correctly checks both:
+    // 1. Status == ReadyForRemoval 
+    // 2. Both active_stake_lamports AND transient_stake_lamports == 0
+    // Only validators meeting BOTH criteria are removed by cleanup_removed_validator_entries
 }
