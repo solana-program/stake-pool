@@ -1121,9 +1121,4 @@ async fn cleanup_does_not_remove_validators_with_remaining_lamports() {
         StakeStatus::ReadyForRemoval.into(),
         "Validator status should remain ReadyForRemoval"
     );
-
-    // This test proves that ValidatorStakeInfo::is_removed() correctly checks both:
-    // 1. Status == ReadyForRemoval 
-    // 2. Both active_stake_lamports AND transient_stake_lamports == 0
-    // Only validators meeting BOTH criteria are removed by cleanup_removed_validator_entries
 }
