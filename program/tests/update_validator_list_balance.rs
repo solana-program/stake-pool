@@ -2,13 +2,14 @@
 mod helpers;
 
 use {
+    bincode,
     helpers::*,
     solana_program::{
         borsh1::try_from_slice_unchecked, instruction::InstructionError, program_pack::Pack,
     },
     solana_program_test::*,
     solana_sdk::{
-        hash::Hash, signature::Signer, stake::state::StakeStateV2, transaction::TransactionError,
+        hash::Hash, signature::{Keypair, Signer}, stake::state::StakeStateV2, transaction::TransactionError,
     },
     spl_stake_pool::{
         error::StakePoolError,
@@ -779,3 +780,219 @@ async fn fail_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
 async fn success_with_force_destaked_validator() {}
+
+#[tokio::test]
+async fn updates_validator_status_after_cluster_restart_merge() {
+    let num_validators = 1;
+    let (
+        mut context,
+        last_blockhash,
+        stake_pool_accounts,
+        stake_accounts,
+        _,
+        _validator_lamports,
+        reserve_lamports,
+        _slot,
+    ) = setup(num_validators).await;
+
+    let validator_stake_account = &stake_accounts[0];
+    
+    // Get initial validator list state - should be Active
+    let initial_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    let initial_validator_info = &initial_validator_list.validators[0];
+    assert_eq!(initial_validator_info.status, StakeStatus::Active.into());
+    
+    // Simulate cluster restart scenario where stake account gets reset to Initialized
+    let stake_pool = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+    
+    // Create an Initialized stake account (as would happen during cluster restart)
+    let initialized_meta = solana_stake_interface::state::Meta {
+        rent_exempt_reserve: 2282880, // Standard rent exemption
+        authorized: solana_stake_interface::state::Authorized {
+            staker: stake_pool_accounts.withdraw_authority,  // Correct authorities
+            withdrawer: stake_pool_accounts.withdraw_authority,
+        },
+        lockup: stake_pool.lockup, // Correct lockup
+    };
+    
+    let initialized_stake_state = StakeStateV2::Initialized(initialized_meta);
+    
+    // Set the stake account to Initialized state (simulating cluster restart)
+    let mut stake_account_data = context
+        .banks_client
+        .get_account(validator_stake_account.stake_account)
+        .await
+        .unwrap()
+        .unwrap();
+    
+    stake_account_data.data = bincode::serialize(&initialized_stake_state).unwrap();
+    context.set_account(&validator_stake_account.stake_account, &stake_account_data.into());
+    
+    // Run update_validator_list_balance - this should merge the Initialized account into reserve
+    // and CRITICALLY update the validator status to ReadyForRemoval
+    let error = stake_pool_accounts
+        .update_validator_list_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            1,
+            false,
+        )
+        .await;
+    assert!(error.is_none(), "Update should succeed: {:?}", error);
+    
+    // MAIN TEST: Verify the validator status was properly updated to ReadyForRemoval
+    // This is the critical fix - without it, the status would remain Active
+    let post_merge_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    let post_merge_validator_info = &post_merge_validator_list.validators[0];
+    assert_eq!(
+        post_merge_validator_info.status, 
+        StakeStatus::ReadyForRemoval.into(),
+        "Validator status should be updated to ReadyForRemoval after merging Initialized stake"
+    );
+    
+    // Verify the funds were properly merged into reserve
+    let post_merge_reserve = context
+        .banks_client
+        .get_account(stake_pool_accounts.reserve_stake.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        post_merge_reserve.lamports > reserve_lamports,
+        "Reserve should have absorbed the Initialized stake funds"
+    );
+    
+    // Verify active stake lamports are 0 (since account was merged)
+    assert_eq!(
+        u64::from(post_merge_validator_info.active_stake_lamports),
+        0,
+        "Active stake lamports should be 0 after merging Initialized account"
+    );
+    
+    // This test proves that Fix #2 works: "update the validator status correctly after merging the inactive stake into the reserve"
+}
+
+#[tokio::test]
+async fn ignores_unusable_stake_accounts_preventing_exploit() {
+    let num_validators = 1;
+    let (
+        mut context,
+        last_blockhash,
+        stake_pool_accounts,
+        stake_accounts,
+        _,
+        validator_lamports,
+        _reserve_lamports,
+        _slot,
+    ) = setup(num_validators).await;
+
+    let validator_stake_account = &stake_accounts[0];
+    
+    // Verify the validator starts as Active with proper stake
+    let initial_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    let initial_validator_info = &initial_validator_list.validators[0];
+    assert_eq!(initial_validator_info.status, StakeStatus::Active.into());
+    assert!(u64::from(initial_validator_info.active_stake_lamports) > 0);
+    let initial_stake_pool = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+    
+    // Now simulate the attack - malicious actor takes control of the stake account
+    // This could happen after a cluster restart where the account gets reset to Initialized
+    // and then the attacker manages to gain control before the pool processes it
+    let malicious_authority = Keypair::new();
+    let extra_malicious_lamports = 1_000_000_000; // 1 SOL extra
+    let stake_pool = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+    
+    let malicious_meta = solana_stake_interface::state::Meta {
+        rent_exempt_reserve: 2282880,
+        authorized: solana_stake_interface::state::Authorized {
+            staker: malicious_authority.pubkey(),     // WRONG - should be pool's withdraw authority
+            withdrawer: malicious_authority.pubkey(), // WRONG - should be pool's withdraw authority
+        },
+        lockup: solana_stake_interface::state::Lockup {
+            custodian: malicious_authority.pubkey(),  // WRONG - different from pool's lockup
+            epoch: stake_pool.lockup.epoch + 100,    // WRONG - different epoch
+            ..stake_pool.lockup
+        },
+    };
+    
+    // Create a malicious delegation with the original validator + extra stake
+    let malicious_delegation = solana_stake_interface::state::Delegation {
+        voter_pubkey: validator_stake_account.vote.pubkey(),
+        stake: validator_lamports + extra_malicious_lamports, // Original stake + malicious extra
+        activation_epoch: 0,
+        deactivation_epoch: u64::MAX,
+        ..Default::default()
+    };
+    
+    let malicious_stake = solana_stake_interface::state::Stake {
+        delegation: malicious_delegation,
+        credits_observed: 0,
+    };
+    
+    let malicious_stake_state = StakeStateV2::Stake(
+        malicious_meta, 
+        malicious_stake, 
+        solana_stake_interface::stake_flags::StakeFlags::empty()
+    );
+    
+    // Get original stake account for comparison
+    let original_stake_account = context
+        .banks_client
+        .get_account(validator_stake_account.stake_account)
+        .await
+        .unwrap()
+        .unwrap();
+    let original_lamports = original_stake_account.lamports;
+    
+    // Replace the legitimate stake account with the malicious one
+    let mut malicious_account = original_stake_account.clone();
+    malicious_account.lamports = original_lamports + extra_malicious_lamports;
+    malicious_account.data = bincode::serialize(&malicious_stake_state).unwrap();
+    context.set_account(&validator_stake_account.stake_account, &malicious_account.into());
+    
+    // Run update_validator_list_balance - this should succeed butignore the malicious account
+    let error = stake_pool_accounts
+        .update_validator_list_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            1,
+            false,
+        )
+        .await;
+    assert!(error.is_none(), "Update should succeed but ignore malicious account: {:?}", error);
+    
+    let final_validator_list = stake_pool_accounts.get_validator_list(&mut context.banks_client).await;
+    let final_validator_info = &final_validator_list.validators[0];
+    
+    // The validator should still be marked as Active but with 0 active stake
+    // because the malicious account was ignored
+    assert_eq!(final_validator_info.status, StakeStatus::Active.into());
+    assert_eq!(
+        u64::from(final_validator_info.active_stake_lamports),
+        0,
+        "Active stake lamports should be 0 because malicious account is ignored"
+    );
+    
+    // The malicious stake account should still exist with all its lamports
+    // (proving it was ignored, not merged or processed)
+    let final_malicious_account = context
+        .banks_client
+        .get_account(validator_stake_account.stake_account)
+        .await
+        .unwrap()
+        .unwrap();
+    
+    assert_eq!(
+        final_malicious_account.lamports,
+        original_lamports + extra_malicious_lamports,
+        "Malicious account should retain all its lamports since it was ignored"
+    );
+    
+    // Verify the pool's total assets remained unchanged (malicious account was ignored)
+    let final_stake_pool = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+    assert_eq!(final_stake_pool.total_lamports, initial_stake_pool.total_lamports);
+    
+    // This test proves fix for "only count active validator stakes if they're usable by the pool"
+}
