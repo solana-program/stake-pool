@@ -2668,6 +2668,45 @@ pub async fn setup_for_withdraw(
     )
 }
 
+pub async fn set_validator_list_to_uninitialized_account(
+    context: &mut ProgramTestContext,
+    stake_pool_accounts: &StakePoolAccounts,
+) {
+    // Get the rent-exempt minimum for the account size
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let account_size = std::mem::size_of::<state::ValidatorList>();
+    let minimum_balance = rent.minimum_balance(account_size);
+    
+    // Create a new uninitialized validator list account
+    let new_validator_list = Keypair::new();    
+    let create_account_instruction = system_instruction::create_account(
+        &context.payer.pubkey(),
+        &new_validator_list.pubkey(),
+        minimum_balance,
+        account_size as u64,
+        &id(),
+    );
+    let mut transaction = Transaction::new_with_payer(
+        &[create_account_instruction],
+        Some(&context.payer.pubkey()),
+    );
+    transaction.sign(&[&context.payer, &new_validator_list], context.last_blockhash);
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+    // Get the uninitialized account
+    let uninitialized_account = context
+        .banks_client
+        .get_account(new_validator_list.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+    // Set the uninitialized account at the validator list address
+    context.set_account(&stake_pool_accounts.validator_list.pubkey(), &uninitialized_account.into());
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum DecreaseInstruction {
     Additional,
