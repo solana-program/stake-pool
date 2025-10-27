@@ -2603,7 +2603,7 @@ fn main() {
             .about("Increase stake to a validator, drawing from the stake pool reserve. Must be signed by the pool staker.")
             .arg(
                 Arg::with_name("pool")
-                    .index(1)
+                    .long("pool")
                     .validator(is_pubkey)
                     .value_name("POOL_ADDRESS")
                     .takes_value(true)
@@ -2612,7 +2612,7 @@ fn main() {
             )
             .arg(
                 Arg::with_name("vote_account")
-                    .index(2)
+                    .long("vote-account")
                     .validator(is_pubkey)
                     .value_name("VOTE_ACCOUNT_ADDRESS")
                     .takes_value(true)
@@ -2622,7 +2622,7 @@ fn main() {
             )
             .arg(
                 Arg::with_name("amount")
-                    .index(3)
+                    .long("amount")
                     .validator(is_amount)
                     .value_name("AMOUNT")
                     .takes_value(true)
@@ -3322,8 +3322,6 @@ fn main() {
                 .unwrap()
                 .map(|amount_str| native_token::sol_str_to_lamports(amount_str).unwrap())
                 .collect();
-            // let amount_str = arg_matches.value_of("amount").unwrap();
-
             command_increase_validator_stake(&config, &stake_pool_address, &vote_accounts, &amounts)
         }
         ("decrease-validator-stake", Some(arg_matches)) => {
