@@ -14,7 +14,7 @@ use {
     },
     solana_clap_utils::{
         compute_unit_price::{compute_unit_price_arg, COMPUTE_UNIT_PRICE_ARG},
-        input_parsers::{keypair_of, pubkey_of},
+        input_parsers::{keypair_of, pubkey_of, pubkeys_of},
         input_validators::{
             is_amount, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
             is_valid_percentage, is_valid_pubkey, is_valid_signer,
@@ -885,38 +885,41 @@ fn command_vsa_remove(
 fn command_increase_validator_stake(
     config: &Config,
     stake_pool_address: &Pubkey,
-    vote_account: &Pubkey,
-    lamports: u64,
+    vote_accounts: &[Pubkey],
+    amounts: &[u64],
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
     }
 
-    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
-    let validator_stake_info = validator_list
-        .find(vote_account)
-        .ok_or("Vote account not found in validator list")?;
-    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
+    for (vote_account, lamports) in vote_accounts.iter().zip(amounts.iter()) {
+        let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+        let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+        let validator_stake_info = validator_list
+            .find(vote_account)
+            .ok_or("Vote account not found in validator list")?;
+        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
 
-    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
-    unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[
-            spl_stake_pool::instruction::increase_validator_stake_with_vote(
-                &config.stake_pool_program_id,
-                &stake_pool,
-                stake_pool_address,
-                vote_account,
-                lamports,
-                validator_seed,
-                validator_stake_info.transient_seed_suffix.into(),
-            ),
-        ],
-        &signers,
-    )?;
-    send_transaction(config, transaction)?;
+        let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+        unique_signers!(signers);
+        let transaction = checked_transaction_with_signers(
+            config,
+            &[
+                spl_stake_pool::instruction::increase_validator_stake_with_vote(
+                    &config.stake_pool_program_id,
+                    &stake_pool,
+                    stake_pool_address,
+                    vote_account,
+                    *lamports,
+                    validator_seed,
+                    validator_stake_info.transient_seed_suffix.into(),
+                ),
+            ],
+            &signers,
+        )?;
+        send_transaction(config, transaction)?;
+    }
+
     Ok(())
 }
 
@@ -2614,6 +2617,7 @@ fn main() {
                     .value_name("VOTE_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .required(true)
+                    .multiple(true)
                     .help("Vote account for the validator to increase stake to"),
             )
             .arg(
@@ -2622,6 +2626,7 @@ fn main() {
                     .validator(is_amount)
                     .value_name("AMOUNT")
                     .takes_value(true)
+                    .multiple(true)
                     .help("Amount in SOL to add to the validator stake account. Must be at least the rent-exempt amount for a stake plus 1 SOL for merging."),
             )
         )
@@ -3311,10 +3316,15 @@ fn main() {
         }
         ("increase-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
-            let amount_str = arg_matches.value_of("amount").unwrap();
-            let lamports = native_token::sol_str_to_lamports(amount_str).unwrap();
-            command_increase_validator_stake(&config, &stake_pool_address, &vote_account, lamports)
+            let vote_accounts: Vec<Pubkey> = pubkeys_of(arg_matches, "vote_account").unwrap();
+            let amounts: Vec<u64> = arg_matches
+                .values_of("amount")
+                .unwrap()
+                .map(|amount_str| native_token::sol_str_to_lamports(amount_str).unwrap())
+                .collect();
+            // let amount_str = arg_matches.value_of("amount").unwrap();
+
+            command_increase_validator_stake(&config, &stake_pool_address, &vote_accounts, &amounts)
         }
         ("decrease-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
