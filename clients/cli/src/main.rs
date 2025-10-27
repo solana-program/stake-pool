@@ -2618,7 +2618,7 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .multiple(true)
-                    .help("Vote account for the validator to increase stake to"),
+                    .help("Vote account(s) for the validator to increase stake to"),
             )
             .arg(
                 Arg::with_name("amount")
@@ -2627,7 +2627,7 @@ fn main() {
                     .value_name("AMOUNT")
                     .takes_value(true)
                     .multiple(true)
-                    .help("Amount in SOL to add to the validator stake account. Must be at least the rent-exempt amount for a stake plus 1 SOL for merging."),
+                    .help("Amount(s) in SOL to add to the validator stake account. Must be at least the rent-exempt amount for a stake plus 1 SOL for merging."),
             )
         )
         .subcommand(SubCommand::with_name("decrease-validator-stake")
