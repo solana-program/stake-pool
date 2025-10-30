@@ -1320,3 +1320,177 @@ async fn fail_overdraw_reserve() {
         )
     );
 }
+
+#[tokio::test]
+async fn success_remove_preferred_validator_resets_preference() {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        sol_withdraw_authority,
+        _,
+    ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
+
+    let last_blockhash = context.banks_client
+        .get_new_latest_blockhash(&context.last_blockhash).await
+        .unwrap();
+
+    // Set the validator as the preferred withdraw validator
+    stake_pool_accounts.set_preferred_validator(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        instruction::PreferredValidatorType::Withdraw,
+        Some(validator_stake.vote.pubkey())
+    ).await;
+
+    // Also set it as preferred deposit validator to test both reset paths
+    stake_pool_accounts.set_preferred_validator(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        instruction::PreferredValidatorType::Deposit,
+        Some(validator_stake.vote.pubkey())
+    ).await;
+
+    // Verify the preferred deposit and withdraw validators are set
+    let stake_pool_before = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+    assert_eq!(
+        stake_pool_before.preferred_withdraw_validator_vote_address,
+        Some(validator_stake.vote.pubkey())
+    );
+    assert_eq!(
+        stake_pool_before.preferred_deposit_validator_vote_address,
+        Some(validator_stake.vote.pubkey())
+    );
+
+    println!("Preferred validators set to: {}", validator_stake.vote.pubkey());
+
+    // Warp forward to after reward payout
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let mut slot = first_normal_slot + 1;
+    context.warp_to_slot(slot).unwrap();
+
+    let error = stake_pool_accounts.update_all(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        false
+    ).await;
+    assert!(error.is_none(), "{:?}", error);
+
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
+    let stake_pool = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+    let lamports_per_pool_token = stake_pool.get_lamports_per_pool_token().unwrap();
+
+    // Decrease all of stake except for exactly lamports_per_pool_token lamports
+    // This will leave the minimum amount that can be withdrawn completely
+    let error = stake_pool_accounts.decrease_validator_stake_either(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        &validator_stake.stake_account,
+        &validator_stake.transient_stake_account,
+        deposit_info.stake_lamports + stake_rent - lamports_per_pool_token,
+        validator_stake.transient_stake_seed,
+        DecreaseInstruction::Reserve
+    ).await;
+    assert!(error.is_none(), "{:?}", error);
+
+    // Warp forward to deactivation
+    slot += context.genesis_config().epoch_schedule.slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
+
+    let last_blockhash = context.banks_client
+        .get_new_latest_blockhash(&last_blockhash).await
+        .unwrap();
+
+    // Update to merge deactivated stake into reserve
+    let error = stake_pool_accounts.update_all(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        false
+    ).await;
+    assert!(error.is_none(), "{:?}", error);
+
+    let validator_stake_account = get_account(
+        &mut context.banks_client,
+        &validator_stake.stake_account
+    ).await;
+    let remaining_lamports = validator_stake_account.lamports;
+    let stake_minimum_delegation = stake_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash
+    ).await;
+
+    println!("Remaining lamports in validator: {}", remaining_lamports);
+    println!("Stake rent: {}", stake_rent);
+    println!("Minimum delegation: {}", stake_minimum_delegation);
+    // Make sure it's actually more than the minimum (should be exactly lamports_per_pool_token)
+    assert!(remaining_lamports > stake_rent + stake_minimum_delegation);
+
+    // Calculate pool tokens needed to withdraw everything (this should remove the validator completely)
+    let stake_pool_updated = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+    let pool_tokens_post_fee = (remaining_lamports * stake_pool_updated.pool_token_supply).div_ceil(
+        stake_pool_updated.total_lamports
+    );
+    let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(pool_tokens_post_fee);
+
+    println!("Pool tokens needed for complete withdrawal: {}", pool_tokens);
+
+    let new_user_authority = Pubkey::new_unique();
+
+    // Perform the complete withdrawal - this should trigger validator removal and reset preferred validators
+    let error = stake_pool_accounts.withdraw_stake(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+        &sol_withdraw_authority,
+        &user_stake_recipient.pubkey(),
+        &user_transfer_authority,
+        &deposit_info.pool_account.pubkey(),
+        &validator_stake.stake_account,
+        &new_user_authority,
+        pool_tokens
+    ).await;
+    assert!(error.is_none(), "Complete withdrawal should succeed: {:?}", error);
+
+    println!("Complete withdrawal successful - validator should be removed");
+
+    // Verify validator stake account is gone
+    let validator_stake_account_after = context.banks_client
+        .get_account(validator_stake.stake_account).await
+        .unwrap();
+    assert!(validator_stake_account_after.is_none(), "Validator stake account should be removed");
+
+    // Verify that preferred validators have been reset to None
+    let stake_pool_after = stake_pool_accounts.get_stake_pool(&mut context.banks_client).await;
+
+    assert_eq!(
+        stake_pool_after.preferred_withdraw_validator_vote_address,
+        None,
+        "Preferred withdraw validator should be reset to None"
+    );
+    assert_eq!(
+        stake_pool_after.preferred_deposit_validator_vote_address,
+        None,
+        "Preferred deposit validator should be reset to None"
+    );
+
+    // Verify user received the stake
+    let user_stake_recipient_account = get_account(
+        &mut context.banks_client,
+        &user_stake_recipient.pubkey()
+    ).await;
+    assert_eq!(
+        user_stake_recipient_account.lamports,
+        remaining_lamports + stake_rent,
+        "User should receive all lamports from removed validator"
+    );
+}
