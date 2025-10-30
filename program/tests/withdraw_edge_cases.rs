@@ -578,7 +578,7 @@ async fn fail_with_transient() {
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
-            &validator_stake.transient_stake_account, // ✅ Withdraw from transient stake account
+            &validator_stake.transient_stake_account,
             &new_user_authority,
             pool_tokens,
         )
