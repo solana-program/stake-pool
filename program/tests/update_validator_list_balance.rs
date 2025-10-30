@@ -1169,12 +1169,9 @@ async fn cleanup_does_not_remove_validators_with_remaining_lamports() {
     }
 
     // Now manually modify the first validator to have some remaining active lamports
-    // This simulates a scenario where cleanup is called but one validator still has funds
     let mut modified_validator_list = updated_validator_list.clone();
     modified_validator_list.validators[0].active_stake_lamports = PodU64::from(1_000_000u64); // 1 SOL remaining
     modified_validator_list.validators[0].transient_stake_lamports = PodU64::from(0u64); // No transient stake
-
-    // Update the validator list with the modified data
     let validator_list_account = context
         .banks_client
         .get_account(stake_pool_accounts.validator_list.pubkey())
