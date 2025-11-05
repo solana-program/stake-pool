@@ -1,6 +1,4 @@
 #![allow(clippy::arithmetic_side_effects)]
-#![cfg(feature = "test-sbf")]
-
 mod helpers;
 
 use {
