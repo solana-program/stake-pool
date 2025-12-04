@@ -1,3 +1,7 @@
+# Reduce the size of debug builds
+[profile.dev]
+debug = "line-tables-only"
+
 [workspace]
 resolver = "2"
 members = ["clients/cli", "program"]

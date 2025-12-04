@@ -1,6 +1,4 @@
 #![allow(clippy::arithmetic_side_effects)]
-#![cfg(feature = "test-sbf")]
-
 use spl_stake_pool::instruction;
 
 mod helpers;
