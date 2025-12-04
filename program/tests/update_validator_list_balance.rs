@@ -5,10 +5,15 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh1::try_from_slice_unchecked, program_pack::Pack},
+    solana_program::{
+        borsh1::try_from_slice_unchecked, instruction::InstructionError, program_pack::Pack,
+    },
     solana_program_test::*,
-    solana_sdk::{hash::Hash, signature::Signer, stake::state::StakeStateV2},
+    solana_sdk::{
+        hash::Hash, signature::Signer, stake::state::StakeStateV2, transaction::TransactionError,
+    },
     spl_stake_pool::{
+        error::StakePoolError,
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_RESERVE_LAMPORTS,
     },
@@ -728,6 +733,47 @@ async fn success_with_burned_tokens() {
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
 
     assert_eq!(mint.supply, stake_pool.pool_token_supply);
+}
+
+#[tokio::test]
+async fn fail_with_no_merge_during_reward_payout() {
+    let num_validators = 5;
+    let (mut context, last_blockhash, stake_pool_accounts, stake_accounts, _, _, _, mut slot) =
+        setup(num_validators).await;
+
+    // Simulate rewards
+    for stake_account in &stake_accounts {
+        context.increment_vote_account_credits(&stake_account.vote.pubkey(), 100);
+    }
+
+    // Warp one more epoch minus one slot so that rewards are being paid out
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    slot += slots_per_epoch - 1;
+    context.warp_to_slot(slot).unwrap();
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
+    let error = stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            true,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::EpochRewardDistributionInProgress as u32)
+        )
+    );
 }
 
 #[tokio::test]

@@ -11,9 +11,12 @@ use {
         borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
     },
     solana_program_test::*,
-    solana_sdk::{signature::Signer, transaction::TransactionError},
+    solana_sdk::{
+        signature::{keypair::Keypair, Signer},
+        transaction::TransactionError,
+    },
     solana_stake_interface as stake,
-    spl_stake_pool::{error::StakePoolError, instruction, state},
+    spl_stake_pool::{error::StakePoolError, instruction, state, MINIMUM_RESERVE_LAMPORTS},
     test_case::test_case,
 };
 
@@ -114,7 +117,13 @@ async fn success_remove_validator(multiple: u64) {
         deposit_info.stake_lamports * multiple, // each pool token is worth more than one lamport
     )
     .await;
-    stake_pool_accounts
+
+    // warp forward to after reward payout
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let mut slot = first_normal_slot + 1;
+    context.warp_to_slot(slot).unwrap();
+
+    let error = stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
@@ -122,6 +131,7 @@ async fn success_remove_validator(multiple: u64) {
             false,
         )
         .await;
+    assert!(error.is_none(), "{:?}", error);
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
@@ -147,8 +157,8 @@ async fn success_remove_validator(multiple: u64) {
     assert!(error.is_none(), "{:?}", error);
 
     // warp forward to deactivation
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    context.warp_to_slot(first_normal_slot + 1).unwrap();
+    slot += context.genesis_config().epoch_schedule.slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     let last_blockhash = context
         .banks_client
@@ -157,7 +167,7 @@ async fn success_remove_validator(multiple: u64) {
         .unwrap();
 
     // update to merge deactivated stake into reserve
-    stake_pool_accounts
+    let error = stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
@@ -165,6 +175,7 @@ async fn success_remove_validator(multiple: u64) {
             false,
         )
         .await;
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_stake_account =
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
@@ -874,4 +885,151 @@ async fn success_with_small_preferred_withdraw() {
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
+}
+
+#[tokio::test]
+async fn fail_overdraw_reserve() {
+    let mut context = program_test().start_with_context().await;
+    let mut stake_pool_accounts = StakePoolAccounts::new_with_token_program(spl_token::id());
+
+    // Set withdrawal fees to zero for easier calculation
+    stake_pool_accounts.withdrawal_fee = spl_stake_pool::state::Fee {
+        numerator: 0,
+        denominator: 1,
+    };
+    stake_pool_accounts.sol_deposit_fee = spl_stake_pool::state::Fee {
+        numerator: 0,
+        denominator: 1,
+    };
+
+    // Initialize stake pool with minimal reserve
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
+    let reserve_lamports = stake_rent + MINIMUM_RESERVE_LAMPORTS;
+
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            reserve_lamports,
+        )
+        .await
+        .unwrap();
+
+    // Create pool token account for deposits
+    let user_pool_account = Keypair::new();
+    create_token_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts.token_program_id,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &context.payer,
+        &[],
+    )
+    .await
+    .unwrap();
+
+    // Deposit 5 SOL into the pool (this will mint pool tokens to the user)
+    let deposit_amount = 5_000_000_000;
+    let error = stake_pool_accounts
+        .deposit_sol(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_pool_account.pubkey(),
+            deposit_amount,
+            None, // No SOL deposit authority
+        )
+        .await;
+    assert!(error.is_none(), "SOL deposit failed: {:?}", error);
+
+    // Add a validator to the pool
+    let validator_stake_account = ValidatorStakeAccount::new(
+        &stake_pool_accounts.stake_pool.pubkey(),
+        DEFAULT_VALIDATOR_STAKE_SEED,
+        DEFAULT_TRANSIENT_STAKE_SEED,
+    );
+
+    // Create vote account for the validator
+    create_vote(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &validator_stake_account.validator,
+        &validator_stake_account.vote,
+    )
+    .await;
+
+    let error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake_account.stake_account,
+            &validator_stake_account.vote.pubkey(),
+            validator_stake_account.validator_stake_seed,
+        )
+        .await;
+    assert!(error.is_none(), "Add validator failed: {:?}", error);
+
+    let reserve_account = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await;
+    let withdrawable_amount = reserve_account.lamports;
+
+    // Get current stake pool state
+    let stake_pool_before = stake_pool_accounts
+        .get_stake_pool(&mut context.banks_client)
+        .await;
+
+    // Calculate how many pool tokens we need to withdraw the full withdrawable reserve amount
+    let pool_tokens_needed = stake_pool_before
+        .calc_pool_tokens_for_deposit(withdrawable_amount)
+        .unwrap();
+
+    // Get the pool tokens that were minted from our SOL deposit
+    let user_pool_tokens =
+        get_token_balance(&mut context.banks_client, &user_pool_account.pubkey()).await;
+
+    // We need to use the amount that allows us to withdraw the full reserve
+    let pool_tokens_to_use = pool_tokens_needed.min(user_pool_tokens);
+
+    // Create destination stake account for withdrawal
+    let destination_stake_account = Keypair::new();
+    create_blank_stake_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &destination_stake_account,
+    )
+    .await;
+
+    let new_user_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &destination_stake_account.pubkey(),
+            &context.payer,
+            &user_pool_account.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &new_user_authority,
+            pool_tokens_to_use,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::SolWithdrawalTooLarge as u32)
+        )
+    );
 }

@@ -127,6 +127,11 @@ async fn success_update() {
         &voter_pubkey,
     )
     .await;
+
+    // move forward to after rewards payout
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
+
     let pre_reserve_lamports = context
         .banks_client
         .get_account(stake_pool_accounts.reserve_stake.pubkey())

@@ -1640,7 +1640,7 @@ pub fn cleanup_removed_validator_entries(
     validator_list_storage: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_list_storage, false),
     ];
     Instruction {

@@ -754,9 +754,15 @@ impl ValidatorStakeInfo {
         u64::try_from_slice(&data[8..16]).unwrap() > *lamports
     }
 
-    /// Check that the validator stake info is valid
-    pub fn is_not_removed(data: &[u8]) -> bool {
-        FromPrimitive::from_u8(data[40]) != Some(StakeStatus::ReadyForRemoval)
+    /// Check that the validator stake info is totally removed
+    pub fn is_removed(data: &[u8]) -> bool {
+        FromPrimitive::from_u8(data[40]) == Some(StakeStatus::ReadyForRemoval)
+            && data[0..16] == [0; 16] // active and transient stake lamports are 0
+    }
+
+    /// Check that the validator stake info is active
+    pub fn is_active(data: &[u8]) -> bool {
+        FromPrimitive::from_u8(data[40]) == Some(StakeStatus::Active)
     }
 }
 
