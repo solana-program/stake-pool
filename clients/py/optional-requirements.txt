@@ -1,5 +1,5 @@
 flake8==7.3.0
-iniconfig==2.1.0
+iniconfig==2.3.0
 mccabe==0.7.0
 mypy==1.19.0
 mypy-extensions==1.1.0
