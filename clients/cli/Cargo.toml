@@ -20,7 +20,7 @@ solana-logger = "2.2.0"
 solana-program = "2.3.0"
 solana-remote-wallet = "2.3.4"
 solana-sdk = "2.2.1"
-solana-stake-interface = "1"
+solana-stake-interface = "2"
 solana-system-interface = "1"
 spl-associated-token-account = { version = "=7.0.0", features = [
   "no-entrypoint",
