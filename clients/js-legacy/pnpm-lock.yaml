@@ -40,8 +40,8 @@ importers:
         specifier: ^6.1.0
         version: 6.1.0(rollup@4.53.3)
       '@rollup/plugin-multi-entry':
-        specifier: ^6.0.1
-        version: 6.0.1(rollup@4.53.3)
+        specifier: ^7.1.0
+        version: 7.1.0(rollup@4.53.3)
       '@rollup/plugin-node-resolve':
         specifier: ^16.0.3
         version: 16.0.3(rollup@4.53.3)
@@ -515,8 +515,8 @@ packages:
       rollup:
         optional: true
 
-  '@rollup/plugin-multi-entry@6.0.1':
-    resolution: {integrity: sha512-AXm6toPyTSfbYZWghQGbom1Uh7dHXlrGa+HoiYNhQtDUE3Q7LqoUYdVQx9E1579QWS1uOiu+cZRSE4okO7ySgw==}
+  '@rollup/plugin-multi-entry@7.1.0':
+    resolution: {integrity: sha512-dLp8gf+Kb/JvGQOreC6pg2gCFWPNmKaZFUzBRN1KgiOjHMN7ZfVM11dJS0BjmcIpeA6KPbWq2tFB9OwTb2N5Cw==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
@@ -1982,10 +1982,6 @@ packages:
   makeerror@1.0.12:
     resolution: {integrity: sha512-JmqCvUhmt43madlpFzG4BQzG2Z3m6tvQDNKdClZnO3VbIudJYmxsT0FNJMeiB2+JTSlTQTSbU8QdesVmwJcmLg==}
 
-  matched@5.0.1:
-    resolution: {integrity: sha512-E1fhSTPRyhAlNaNvGXAgZQlq1hL0bgYMTk/6bktVlIhzUnX/SZs7296ACdVeNJE8xFNGSuvd9IpI7vSnmcqLvw==}
-    engines: {node: '>=10'}
-
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -3118,10 +3114,10 @@ snapshots:
     optionalDependencies:
       rollup: 4.53.3
 
-  '@rollup/plugin-multi-entry@6.0.1(rollup@4.53.3)':
+  '@rollup/plugin-multi-entry@7.1.0(rollup@4.53.3)':
     dependencies:
       '@rollup/plugin-virtual': 3.0.2(rollup@4.53.3)
-      matched: 5.0.1
+      tinyglobby: 0.2.15
     optionalDependencies:
       rollup: 4.53.3
 
@@ -4820,11 +4816,6 @@ snapshots:
   makeerror@1.0.12:
     dependencies:
       tmpl: 1.0.5
-
-  matched@5.0.1:
-    dependencies:
-      glob: 7.2.3
-      picomatch: 2.3.1
 
   math-intrinsics@1.1.0: {}
 
