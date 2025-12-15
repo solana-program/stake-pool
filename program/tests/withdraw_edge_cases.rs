@@ -27,7 +27,6 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
         deposit_info,
         user_transfer_authority,
         user_stake_recipient,
-        sol_withdraw_authority,
         _,
     ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
@@ -112,7 +111,6 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &sol_withdraw_authority,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -447,7 +445,6 @@ async fn fail_with_transient() {
         deposit_info,
         user_transfer_authority,
         user_stake_recipient,
-        sol_withdraw_authority,
         _,
     ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
@@ -574,7 +571,6 @@ async fn fail_with_transient() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &sol_withdraw_authority,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
@@ -1330,7 +1326,6 @@ async fn success_remove_preferred_validator_resets_preference() {
         deposit_info,
         user_transfer_authority,
         user_stake_recipient,
-        sol_withdraw_authority,
         _,
     ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
@@ -1451,7 +1446,6 @@ async fn success_remove_preferred_validator_resets_preference() {
         &mut context.banks_client,
         &context.payer,
         &last_blockhash,
-        &sol_withdraw_authority,
         &user_stake_recipient.pubkey(),
         &user_transfer_authority,
         &deposit_info.pool_account.pubkey(),
