@@ -63,22 +63,28 @@ async fn setup(
     )
     .await;
 
-    (banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake)
+    (
+        banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        validator_stake,
+    )
 }
 
 // Setup function that returns ProgramTestContext for tests that need epoch warping
 async fn setup_with_context(
     num_validators: u64,
-) -> (
-    ProgramTestContext,
-    StakePoolAccounts,
-    ValidatorStakeAccount,
-) {
+) -> (ProgramTestContext, StakePoolAccounts, ValidatorStakeAccount) {
     let mut context = program_test().start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
-    let current_minimum_delegation =
-        stake_pool_get_minimum_delegation(&mut context.banks_client, &context.payer, &context.last_blockhash).await;
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
     let minimum_for_validator = stake_rent + current_minimum_delegation;
 
     let stake_pool_accounts = StakePoolAccounts::default();
@@ -543,9 +549,9 @@ async fn fail_with_not_updated_stake_pool() {
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
     let slot = first_normal_slot + slots_per_epoch + 1;
     context.warp_to_slot(slot).unwrap();
-    
+
     // Do not update stake pool
-    
+
     let transaction_error = stake_pool_accounts
         .add_validator_to_pool(
             &mut context.banks_client,
@@ -556,16 +562,13 @@ async fn fail_with_not_updated_stake_pool() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    let transaction_error = transaction_error.unwrap().into();
+    let transaction_error = transaction_error.unwrap();
+    let program_error = StakePoolError::StakeListAndPoolOutOfDate as u32;
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            error,
-        )) => {
-            let program_error = StakePoolError::StakeListAndPoolOutOfDate as u32;
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
             assert_eq!(error, InstructionError::Custom(program_error));
         }
-        _ => panic!("Wrong error occurs while trying to remove validator from outdated stake pool"),
+        _ => panic!("Wrong error occurs while trying to add validator to outdated stake pool"),
     }
 }
 
@@ -587,16 +590,15 @@ async fn fail_with_uninitialized_validator_list_account() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    let transaction_error = transaction_error.unwrap().into();
+    let transaction_error = transaction_error.unwrap();
+    let program_error = StakePoolError::InvalidState as u32;
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            error,
-        )) => {
-            let program_error = StakePoolError::InvalidState as u32;
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
             assert_eq!(error, InstructionError::Custom(program_error));
         }
-        _ => panic!("Wrong error occurs while trying to add validator with uninitialized validator list account"),
+        _ => panic!(
+            "Wrong error occurs while trying to add validator with uninitialized validator list"
+        ),
     }
 }
 

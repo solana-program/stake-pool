@@ -851,9 +851,9 @@ async fn fail_not_updated_stake_pool() {
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
     let slot = first_normal_slot + slots_per_epoch + 1;
     context.warp_to_slot(slot).unwrap();
-    
+
     // do not update stake pool
-    
+
     let transaction_error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
@@ -863,12 +863,9 @@ async fn fail_not_updated_stake_pool() {
             &validator_stake.transient_stake_account,
         )
         .await;
-    let transaction_error = transaction_error.unwrap().into();
+    let transaction_error = transaction_error.unwrap();
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            error,
-        )) => {
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
             let program_error = StakePoolError::StakeListAndPoolOutOfDate as u32;
             assert_eq!(error, InstructionError::Custom(program_error));
         }
@@ -879,7 +876,7 @@ async fn fail_not_updated_stake_pool() {
 #[tokio::test]
 async fn fail_with_uninitialized_validator_list_account() {
     let (mut context, stake_pool_accounts, validator_stake) = setup().await;
-    
+
     // Set the validator list to an uninitialized account
     set_validator_list_to_uninitialized_account(&mut context, &stake_pool_accounts).await;
 
@@ -893,18 +890,16 @@ async fn fail_with_uninitialized_validator_list_account() {
             &validator_stake.transient_stake_account,
         )
         .await;
-    
-    let transaction_error = transaction_error.unwrap().into();
+
+    let transaction_error = transaction_error.unwrap();
+    let program_error = StakePoolError::InvalidState as u32;
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            error,
-        )) => {
-            let program_error = StakePoolError::InvalidState as u32;
-            println!("Error: {:?}", error);
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
             assert_eq!(error, InstructionError::Custom(program_error));
         }
-        _ => panic!("Wrong error occurs while trying to remove validator with uninitialized validator list account"),
+        _ => panic!(
+            "Wrong error occurs while trying to remove validator with uninitialized validator list"
+        ),
     }
 }
 
