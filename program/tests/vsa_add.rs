@@ -72,6 +72,46 @@ async fn setup(
     )
 }
 
+// Setup function that returns ProgramTestContext for tests that need epoch warping
+async fn setup_with_context(
+    num_validators: u64,
+) -> (ProgramTestContext, StakePoolAccounts, ValidatorStakeAccount) {
+    let mut context = program_test().start_with_context().await;
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    let minimum_for_validator = stake_rent + current_minimum_delegation;
+
+    let stake_pool_accounts = StakePoolAccounts::default();
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            MINIMUM_RESERVE_LAMPORTS + num_validators * minimum_for_validator,
+        )
+        .await
+        .unwrap();
+
+    let validator_stake =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
+    create_vote(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &validator_stake.validator,
+        &validator_stake.vote,
+    )
+    .await;
+
+    (context, stake_pool_accounts, validator_stake)
+}
+
 #[tokio::test]
 async fn success() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
@@ -501,10 +541,66 @@ async fn fail_add_too_many_validator_stake_accounts() {
 }
 
 #[tokio::test]
-async fn fail_with_unupdated_stake_pool() {} // TODO
+async fn fail_with_not_updated_stake_pool() {
+    let (mut context, stake_pool_accounts, validator_stake) = setup_with_context(1).await;
+
+    // Move to next epoch
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    let slot = first_normal_slot + slots_per_epoch + 1;
+    context.warp_to_slot(slot).unwrap();
+
+    // Do not update stake pool
+
+    let transaction_error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
+        )
+        .await;
+    let transaction_error = transaction_error.unwrap();
+    let program_error = StakePoolError::StakeListAndPoolOutOfDate as u32;
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            assert_eq!(error, InstructionError::Custom(program_error));
+        }
+        _ => panic!("Wrong error occurs while trying to add validator to outdated stake pool"),
+    }
+}
 
 #[tokio::test]
-async fn fail_with_uninitialized_validator_list_account() {} // TODO
+async fn fail_with_uninitialized_validator_list_account() {
+    let (mut context, stake_pool_accounts, validator_stake) = setup_with_context(1).await;
+
+    // Set the validator list to an uninitialized account
+    set_validator_list_to_uninitialized_account(&mut context, &stake_pool_accounts).await;
+
+    // Attempt to add validator to pool with uninitialized validator list
+    let transaction_error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
+            validator_stake.validator_stake_seed,
+        )
+        .await;
+    let transaction_error = transaction_error.unwrap();
+    let program_error = StakePoolError::InvalidState as u32;
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            assert_eq!(error, InstructionError::Custom(program_error));
+        }
+        _ => panic!(
+            "Wrong error occurs while trying to add validator with uninitialized validator list"
+        ),
+    }
+}
 
 #[tokio::test]
 async fn fail_on_non_vote_account() {

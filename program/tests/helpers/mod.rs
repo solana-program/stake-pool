@@ -2668,6 +2668,33 @@ pub async fn setup_for_withdraw(
     )
 }
 
+pub async fn set_validator_list_to_uninitialized_account(
+    context: &mut ProgramTestContext,
+    stake_pool_accounts: &StakePoolAccounts,
+) {
+    // Get the rent-exempt minimum for the account size
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let account_size = std::mem::size_of::<state::ValidatorList>();
+    let minimum_balance = rent.minimum_balance(account_size);
+
+    // Create an uninitialized account at the SAME validator list address
+    // This simulates the validator list account being corrupted/uninitialized
+    // while keeping the same pubkey that the stake pool expects
+    let uninitialized_account = solana_sdk::account::Account {
+        lamports: minimum_balance,
+        data: vec![0u8; account_size], // All zeros - truly uninitialized
+        owner: id(),                   // Owned by stake pool program
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    // Set the uninitialized account at the original validator list address
+    context.set_account(
+        &stake_pool_accounts.validator_list.pubkey(),
+        &uninitialized_account.into(),
+    );
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum DecreaseInstruction {
     Additional,

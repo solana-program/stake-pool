@@ -3,7 +3,7 @@ mod helpers;
 
 use {
     bincode::deserialize,
-    helpers::*,
+    helpers::{set_validator_list_to_uninitialized_account, *},
     solana_program::{
         borsh1::try_from_slice_unchecked,
         instruction::{AccountMeta, Instruction, InstructionError},
@@ -843,10 +843,65 @@ async fn success_with_hijacked_transient_account() {
 }
 
 #[tokio::test]
-async fn fail_not_updated_stake_pool() {} // TODO
+async fn fail_not_updated_stake_pool() {
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+
+    // move to next epoch
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    let slot = first_normal_slot + slots_per_epoch + 1;
+    context.warp_to_slot(slot).unwrap();
+
+    // do not update stake pool
+
+    let transaction_error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await;
+    let transaction_error = transaction_error.unwrap();
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            let program_error = StakePoolError::StakeListAndPoolOutOfDate as u32;
+            assert_eq!(error, InstructionError::Custom(program_error));
+        }
+        _ => panic!("Wrong error occurs while trying to remove validator from outdated stake pool"),
+    }
+}
 
 #[tokio::test]
-async fn fail_with_uninitialized_validator_list_account() {} // TODO
+async fn fail_with_uninitialized_validator_list_account() {
+    let (mut context, stake_pool_accounts, validator_stake) = setup().await;
+
+    // Set the validator list to an uninitialized account
+    set_validator_list_to_uninitialized_account(&mut context, &stake_pool_accounts).await;
+
+    // Attempt to remove validator from pool with uninitialized validator list
+    let transaction_error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await;
+
+    let transaction_error = transaction_error.unwrap();
+    let program_error = StakePoolError::InvalidState as u32;
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            assert_eq!(error, InstructionError::Custom(program_error));
+        }
+        _ => panic!(
+            "Wrong error occurs while trying to remove validator with uninitialized validator list"
+        ),
+    }
+}
 
 #[tokio::test]
 async fn update_no_merge_after_removal() {
