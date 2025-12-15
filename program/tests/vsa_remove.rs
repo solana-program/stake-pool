@@ -1072,8 +1072,10 @@ async fn success_remove_validator_with_transient_stake_triggers_deactivating_all
     );
 
     // Verify both active and transient stake accounts are being deactivated
-    let active_stake_account = get_account(&mut context.banks_client, &validator_stake.stake_account).await;
-    let active_stake_state = deserialize::<stake::state::StakeStateV2>(&active_stake_account.data).unwrap();
+    let active_stake_account =
+        get_account(&mut context.banks_client, &validator_stake.stake_account).await;
+    let active_stake_state =
+        deserialize::<stake::state::StakeStateV2>(&active_stake_account.data).unwrap();
     if let stake::state::StakeStateV2::Stake(_, active_stake, _) = active_stake_state {
         assert_ne!(
             active_stake.delegation.deactivation_epoch,
@@ -1082,8 +1084,13 @@ async fn success_remove_validator_with_transient_stake_triggers_deactivating_all
         );
     }
 
-    let transient_stake_account = get_account(&mut context.banks_client, &validator_stake.transient_stake_account).await;
-    let transient_stake_state = deserialize::<stake::state::StakeStateV2>(&transient_stake_account.data).unwrap();
+    let transient_stake_account = get_account(
+        &mut context.banks_client,
+        &validator_stake.transient_stake_account,
+    )
+    .await;
+    let transient_stake_state =
+        deserialize::<stake::state::StakeStateV2>(&transient_stake_account.data).unwrap();
     if let stake::state::StakeStateV2::Stake(_, transient_stake, _) = transient_stake_state {
         assert_ne!(
             transient_stake.delegation.deactivation_epoch,
