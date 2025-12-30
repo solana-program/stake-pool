@@ -1418,7 +1418,8 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let cli_stake_pool_stake_account_infos = validator_list
         .validators
         .iter()
-        .map(|validator| {
+        .enumerate()
+        .map(|(index, validator)| {
             let validator_seed = NonZeroU32::new(validator.validator_seed_suffix.into());
             let (stake_account_address, _) = find_stake_program_address(
                 &config.stake_pool_program_id,
@@ -1434,6 +1435,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
             );
             let update_required = u64::from(validator.last_update_epoch) != epoch_info.epoch;
             CliStakePoolStakeAccountInfo {
+                index,
                 vote_account_address: validator.vote_account_address.to_string(),
                 stake_account_address: stake_account_address.to_string(),
                 validator_active_stake_lamports: validator.active_stake_lamports.into(),
