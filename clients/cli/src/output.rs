@@ -305,7 +305,8 @@ impl VerboseDisplay for CliStakePoolDetails {
         for stake_account in &self.stake_accounts {
             writeln!(
                 w,
-                "Vote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",
+                "Index: {}\tVote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",
+                stake_account.index,
                 stake_account.vote_account_address,
                 stake_account.stake_account_address,
                 Sol(stake_account.validator_active_stake_lamports),
@@ -347,6 +348,7 @@ impl VerboseDisplay for CliStakePoolDetails {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CliStakePoolStakeAccountInfo {
+    pub index: usize,
     pub vote_account_address: String,
     pub stake_account_address: String,
     pub validator_active_stake_lamports: u64,
