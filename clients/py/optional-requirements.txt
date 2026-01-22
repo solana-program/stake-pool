@@ -3,7 +3,7 @@ iniconfig==2.3.0
 mccabe==0.7.0
 mypy==1.19.1
 mypy-extensions==1.1.0
-packaging==25.0
+packaging==26.0
 pluggy==1.6.0
 pycodestyle==2.14.0
 pyflakes==3.4.0
