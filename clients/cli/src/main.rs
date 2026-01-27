@@ -3408,7 +3408,7 @@ fn main() {
         }
         ("list", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let sort_by = arg_matches.value_of("sort_by");
+            let sort_by = arg_matches.value_of("sort");
             command_list(&config, &stake_pool_address, sort_by)
         }
         ("update", Some(arg_matches)) => {
