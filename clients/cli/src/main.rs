@@ -2868,8 +2868,8 @@ fn main() {
                     .long("sort")
                     .value_name("SORT_OPTION")
                     .takes_value(true)
-                    .possible_values(&["stake", "epoch"])
-                    .help("Sort validators by: stake (largest first) or epoch (most recent first)"),
+                    .possible_values(&["stake", "update-epoch"])
+                    .help("Sort validators by: stake (largest first) or update-epoch (most recent first)"),
             )
         )
         .subcommand(SubCommand::with_name("update")
