@@ -1455,7 +1455,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey, sort_by: Option<&s
                 b.validator_lamports.cmp(&a.validator_lamports)
             });
         }
-        Some("epoch") => {
+        Some("update-epoch") => {
             cli_stake_pool_stake_account_infos.sort_by(|a, b| {
                 b.validator_last_update_epoch.cmp(&a.validator_last_update_epoch)
             });
