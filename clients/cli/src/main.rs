@@ -2864,8 +2864,8 @@ fn main() {
                     .help("Stake pool address."),
             )
             .arg(
-                Arg::with_name("sort_by")
-                    .long("sort-by")
+                Arg::with_name("sort")
+                    .long("sort")
                     .value_name("SORT_OPTION")
                     .takes_value(true)
                     .possible_values(&["stake", "epoch"])
