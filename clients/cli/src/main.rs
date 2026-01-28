@@ -1397,7 +1397,11 @@ fn command_deposit_sol(
     Ok(())
 }
 
-fn command_list(config: &Config, stake_pool_address: &Pubkey, sort_by: Option<&str>) -> CommandResult {
+fn command_list(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    sort_by: Option<&str>,
+) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let reserve_stake_account_address = stake_pool.reserve_stake.to_string();
     let total_lamports = stake_pool.total_lamports;
@@ -1448,16 +1452,16 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey, sort_by: Option<&s
             }
         })
         .collect();
-    
+
     match sort_by {
         Some("stake") => {
-            cli_stake_pool_stake_account_infos.sort_by(|a, b| {
-                b.validator_lamports.cmp(&a.validator_lamports)
-            });
+            cli_stake_pool_stake_account_infos
+                .sort_by(|a, b| b.validator_lamports.cmp(&a.validator_lamports));
         }
         Some("update-epoch") => {
             cli_stake_pool_stake_account_infos.sort_by(|a, b| {
-                b.validator_last_update_epoch.cmp(&a.validator_last_update_epoch)
+                b.validator_last_update_epoch
+                    .cmp(&a.validator_last_update_epoch)
             });
         }
         _ => {
