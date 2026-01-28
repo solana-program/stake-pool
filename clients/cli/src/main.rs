@@ -1397,7 +1397,11 @@ fn command_deposit_sol(
     Ok(())
 }
 
-fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
+fn command_list(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    sort_by: Option<&str>,
+) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let reserve_stake_account_address = stake_pool.reserve_stake.to_string();
     let total_lamports = stake_pool.total_lamports;
@@ -1415,7 +1419,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         .rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         + MINIMUM_RESERVE_LAMPORTS;
-    let cli_stake_pool_stake_account_infos = validator_list
+    let mut cli_stake_pool_stake_account_infos: Vec<CliStakePoolStakeAccountInfo> = validator_list
         .validators
         .iter()
         .enumerate()
@@ -1448,6 +1452,22 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
             }
         })
         .collect();
+
+    match sort_by {
+        Some("stake") => {
+            cli_stake_pool_stake_account_infos
+                .sort_by(|a, b| b.validator_lamports.cmp(&a.validator_lamports));
+        }
+        Some("update-epoch") => {
+            cli_stake_pool_stake_account_infos.sort_by(|a, b| {
+                b.validator_last_update_epoch
+                    .cmp(&a.validator_last_update_epoch)
+            });
+        }
+        _ => {
+            // Default: keep original order (by index)
+        }
+    }
     let total_pool_tokens =
         spl_token_2022::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals);
     let mut cli_stake_pool = CliStakePool::from((
@@ -2847,6 +2867,14 @@ fn main() {
                     .required(true)
                     .help("Stake pool address."),
             )
+            .arg(
+                Arg::with_name("sort")
+                    .long("sort")
+                    .value_name("SORT_OPTION")
+                    .takes_value(true)
+                    .possible_values(&["stake", "update-epoch"])
+                    .help("Sort validators by: stake (largest first) or update-epoch (most recent first)"),
+            )
         )
         .subcommand(SubCommand::with_name("update")
             .about("Updates all balances in the pool after validator stake accounts receive rewards.")
@@ -3384,7 +3412,8 @@ fn main() {
         }
         ("list", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            command_list(&config, &stake_pool_address)
+            let sort_by = arg_matches.value_of("sort");
+            command_list(&config, &stake_pool_address, sort_by)
         }
         ("update", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
