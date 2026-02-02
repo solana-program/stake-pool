@@ -268,7 +268,7 @@ async fn merge_into_reserve() {
         .unwrap();
     let pre_reserve_lamports = reserve_stake.lamports;
 
-    println!("Decrease from all validators");
+    // Decrease from all validators
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
             .decrease_validator_stake_either(
@@ -285,7 +285,7 @@ async fn merge_into_reserve() {
         assert!(error.is_none(), "{:?}", error);
     }
 
-    println!("Update, should not change, no merges yet");
+    // Update, should not change, no merges yet
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -311,7 +311,7 @@ async fn merge_into_reserve() {
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(expected_lamports, stake_pool.total_lamports);
 
-    println!("Warp one more epoch so the stakes deactivate");
+    // Warp one more epoch so the stakes deactivate
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
     slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();

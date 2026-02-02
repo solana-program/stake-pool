@@ -55,14 +55,8 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
     )
     .await;
 
-    println!(
-        "Validator stake after decrease: {} lamports",
-        validator_stake_account_after_decrease.lamports
-    );
-    println!(
-        "Transient stake after decrease: {} lamports",
-        transient_stake_account_after_decrease.lamports
-    );
+    // Validator stake after decrease: validator_stake_account_after_decrease.lamports
+    // Transient stake after decrease: transient_stake_account_after_decrease.lamports
 
     // Step 3: Warp forward to deactivation epoch
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -89,15 +83,12 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
         .await
         .unwrap();
 
-    println!(
-        "  Validator stake: {} lamports",
-        validator_stake_account_final.lamports
-    );
+    // Validator stake: validator_stake_account_final.lamports
 
     // Verify transient stake still exists
     let transient_account =
         transient_stake_account_final.expect("Transient stake account should still exist");
-    println!("  Transient stake: {} lamports", transient_account.lamports);
+    // Transient stake: transient_account.lamports
 
     // Step 6: Try to withdraw ALL active stake - this should FAIL because transient stake blocks removal
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -112,7 +103,7 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
         .lamports
         .saturating_sub(stake_rent);
 
-    println!("Testing complete withdrawal of active stake {} lamports (should fail due to transient stake)", active_stake_to_withdraw);
+    // Testing complete withdrawal of active stake (should fail due to transient stake)
 
     let pool_tokens_all = (active_stake_to_withdraw * stake_pool.pool_token_supply)
         .checked_div(stake_pool.total_lamports)
@@ -142,10 +133,7 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
     );
     let transaction_error = error_all.unwrap().unwrap();
 
-    println!(
-        "Complete withdrawal correctly failed with error: {:?}",
-        transaction_error
-    );
+    // Complete withdrawal correctly failed with expected error
     // The error should be StakeLamportsNotEqualToMinimum because the program detects
     // that this validator cannot be removed due to associated transient lamports
     assert_eq!(
@@ -507,15 +495,9 @@ async fn fail_with_transient() {
     let target_validator_lamports = stake_rent + stake_minimum_delegation;
     let amount_to_decrease = current_validator_lamports - target_validator_lamports;
 
-    println!(
-        "Current validator stake: {} lamports",
-        current_validator_lamports
-    );
-    println!(
-        "Target validator stake: {} lamports (rent + min delegation)",
-        target_validator_lamports
-    );
-    println!("Amount to decrease: {} lamports", amount_to_decrease);
+    // Current validator stake: current_validator_lamports
+    // Target validator stake: target_validator_lamports (rent + min delegation)
+    // Amount to decrease: amount_to_decrease
 
     // Decrease validator stake, creating transient stake
     let error = stake_pool_accounts
@@ -541,14 +523,8 @@ async fn fail_with_transient() {
     )
     .await;
 
-    println!(
-        "Validator stake after decrease: {} lamports",
-        validator_stake_account_after.lamports
-    );
-    println!(
-        "Transient stake after decrease: {} lamports",
-        transient_stake_account.lamports
-    );
+    // Validator stake after decrease: validator_stake_account_after.lamports
+    // Transient stake after decrease: transient_stake_account.lamports
 
     // warp forward to deactivation epoch
     slot += context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -582,18 +558,12 @@ async fn fail_with_transient() {
         .await
         .unwrap();
 
-    println!(
-        "Validator stake after epoch change: {} lamports",
-        validator_stake_account_final.lamports
-    );
+    // Validator stake after epoch change: validator_stake_account_final.lamports
 
     // Verify transient stake account still exists and has lamports
     let transient_account =
         transient_stake_account_final.expect("Transient stake account should still exist");
-    println!(
-        "Transient stake after epoch change: {} lamports",
-        transient_account.lamports
-    );
+    // Transient stake after epoch change: transient_account.lamports
 
     // Calculate pool tokens needed to withdraw EXACTLY the transient stake amount
     let stake_pool = stake_pool_accounts
@@ -610,22 +580,10 @@ async fn fail_with_transient() {
         .unwrap();
     let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(pool_tokens_post_fee);
 
-    println!(
-        "Transient account has exactly: {} lamports",
-        exact_transient_lamports
-    );
-    println!(
-        "Attempting to withdraw exactly: {} lamports from transient stake",
-        exact_transient_lamports
-    );
-    println!(
-        "Pool tokens calculated: {} (post-fee: {})",
-        pool_tokens, pool_tokens_post_fee
-    );
-    println!(
-        "Stake pool total lamports: {}, pool token supply: {}",
-        stake_pool.total_lamports, stake_pool.pool_token_supply
-    );
+    // Transient account has exactly: exact_transient_lamports lamports
+    // Attempting to withdraw exactly: exact_transient_lamports lamports from transient stake
+    // Pool tokens calculated: pool_tokens (post-fee: pool_tokens_post_fee)
+    // Stake pool total lamports: stake_pool.total_lamports, pool token supply: stake_pool.pool_token_supply
 
     let new_user_authority = Pubkey::new_unique();
 
@@ -1434,10 +1392,7 @@ async fn success_remove_preferred_validator_resets_preference() {
         Some(validator_stake.vote.pubkey())
     );
 
-    println!(
-        "Preferred validators set to: {}",
-        validator_stake.vote.pubkey()
-    );
+    // Preferred validators set to: validator_stake.vote.pubkey()
 
     // Warp forward to after reward payout
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -1505,9 +1460,9 @@ async fn success_remove_preferred_validator_resets_preference() {
         stake_get_minimum_delegation(&mut context.banks_client, &context.payer, &last_blockhash)
             .await;
 
-    println!("Remaining lamports in validator: {}", remaining_lamports);
-    println!("Stake rent: {}", stake_rent);
-    println!("Minimum delegation: {}", stake_minimum_delegation);
+    // Remaining lamports in validator: remaining_lamports
+    // Stake rent: stake_rent
+    // Minimum delegation: stake_minimum_delegation
     // Make sure it's actually more than the minimum (should be exactly lamports_per_pool_token)
     assert!(remaining_lamports > stake_rent + stake_minimum_delegation);
 
@@ -1519,10 +1474,7 @@ async fn success_remove_preferred_validator_resets_preference() {
         .div_ceil(stake_pool_updated.total_lamports);
     let pool_tokens = stake_pool_accounts.calculate_inverse_withdrawal_fee(pool_tokens_post_fee);
 
-    println!(
-        "Pool tokens needed for complete withdrawal: {}",
-        pool_tokens
-    );
+    // Pool tokens needed for complete withdrawal: pool_tokens
 
     let new_user_authority = Pubkey::new_unique();
 
@@ -1546,7 +1498,7 @@ async fn success_remove_preferred_validator_resets_preference() {
         error
     );
 
-    println!("Complete withdrawal successful - validator should be removed");
+    // Complete withdrawal successful - validator should be removed
 
     // Verify validator stake account is gone
     let validator_stake_account_after = context
