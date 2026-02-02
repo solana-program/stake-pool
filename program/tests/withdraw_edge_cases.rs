@@ -47,9 +47,9 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
     assert!(error.is_none(), "{:?}", error);
 
     // Step 2: Check the state after creating transient stake
-    let validator_stake_account_after_decrease =
+    let _validator_stake_account_after_decrease =
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
-    let transient_stake_account_after_decrease = get_account(
+    let _transient_stake_account_after_decrease = get_account(
         &mut context.banks_client,
         &validator_stake.transient_stake_account,
     )
@@ -86,9 +86,9 @@ async fn fail_remove_validator_blocked_by_transient_stake() {
     // Validator stake: validator_stake_account_final.lamports
 
     // Verify transient stake still exists
-    let transient_account =
+    let _transient_account =
         transient_stake_account_final.expect("Transient stake account should still exist");
-    // Transient stake: transient_account.lamports
+    // Transient stake: _transient_account.lamports
 
     // Step 6: Try to withdraw ALL active stake - this should FAIL because transient stake blocks removal
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -515,9 +515,9 @@ async fn fail_with_transient() {
     assert!(error.is_none(), "{:?}", error);
 
     // Check the state after decrease - validator should have minimum, transient should have the decreased amount
-    let validator_stake_account_after =
+    let _validator_stake_account_after =
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
-    let transient_stake_account = get_account(
+    let _transient_stake_account = get_account(
         &mut context.banks_client,
         &validator_stake.transient_stake_account,
     )
@@ -548,7 +548,7 @@ async fn fail_with_transient() {
     assert!(error.is_none(), "{:?}", error);
 
     // Check final state before withdrawal
-    let validator_stake_account_final =
+    let _validator_stake_account_final =
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
 
     // Check if transient stake account still exists (it might have been merged back)
