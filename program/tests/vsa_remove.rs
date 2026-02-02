@@ -1024,19 +1024,8 @@ async fn success_remove_validator_with_transient_stake_triggers_deactivating_all
         .await;
     assert!(error.is_none(), "{:?}", error);
 
-    // Update the validator list to register the transient stake
-    let error = stake_pool_accounts
-        .update_validator_list_balance(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            1,
-            true, // no_merge = true to keep transient stake separate
-        )
-        .await;
-    assert!(error.is_none(), "{:?}", error);
-
     // Verify the validator has both active and transient stake
+    // (transient stake is registered during increase)
     let validator_list_before = stake_pool_accounts
         .get_validator_list(&mut context.banks_client)
         .await;
