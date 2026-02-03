@@ -1225,6 +1225,12 @@ async fn cleanup_does_not_remove_validators_with_remaining_lamports() {
     }
 
     // Now manually modify the first validator to have some remaining active lamports
+    // Note: This state (ReadyForRemoval with non-zero active_stake_lamports) cannot occur
+    // through normal program execution because the status change to ReadyForRemoval and
+    // the zeroing of active_stake_lamports happen atomically during the merge operation
+    // in update_validator_list_balance. This test uses synthetic state to verify the
+    // defensive guard in is_removed() works correctly - ensuring cleanup won't remove
+    // validators that still have lamports recorded, regardless of how that state arose.
     let mut modified_validator_list = updated_validator_list.clone();
     modified_validator_list.validators[0].active_stake_lamports = PodU64::from(1_000_000u64); // 1 SOL remaining
     modified_validator_list.validators[0].transient_stake_lamports = PodU64::from(0u64); // No transient stake
