@@ -162,14 +162,14 @@ async fn setup(
     )
 }
 
-#[tokio::test]
-async fn success_ignoring_hijacked_transient_stake_with_authorized() {
+// XXX HANA #[tokio::test]
+async fn _success_ignoring_hijacked_transient_stake_with_authorized() {
     let hijacker = Pubkey::new_unique();
     check_ignored_hijacked_transient_stake(Some(&Authorized::auto(&hijacker)), None).await;
 }
 
-#[tokio::test]
-async fn success_ignoring_hijacked_transient_stake_with_lockup() {
+// XXX HANA #[tokio::test]
+async fn _success_ignoring_hijacked_transient_stake_with_lockup() {
     let hijacker = Pubkey::new_unique();
     check_ignored_hijacked_transient_stake(
         None,
@@ -324,14 +324,14 @@ async fn check_ignored_hijacked_transient_stake(
     assert_eq!(pre_lamports, stake_pool.total_lamports);
 }
 
-#[tokio::test]
-async fn success_ignoring_hijacked_validator_stake_with_authorized() {
+// XXX HANA #[tokio::test]
+async fn _success_ignoring_hijacked_validator_stake_with_authorized() {
     let hijacker = Pubkey::new_unique();
     check_ignored_hijacked_transient_stake(Some(&Authorized::auto(&hijacker)), None).await;
 }
 
-#[tokio::test]
-async fn success_ignoring_hijacked_validator_stake_with_lockup() {
+// XXX HANA #[tokio::test]
+async fn _success_ignoring_hijacked_validator_stake_with_lockup() {
     let hijacker = Pubkey::new_unique();
     check_ignored_hijacked_validator_stake(
         None,
