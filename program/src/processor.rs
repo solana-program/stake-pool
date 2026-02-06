@@ -318,7 +318,7 @@ fn create_stake_account(
 ) -> Result<(), ProgramError> {
     invoke_signed(
         &system_instruction::allocate(stake_account_info.key, stake_space as u64),
-        &[stake_account_info.clone()],
+        core::slice::from_ref(&stake_account_info),
         &[stake_account_signer_seeds],
     )?;
     invoke_signed(

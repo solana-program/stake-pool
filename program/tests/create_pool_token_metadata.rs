@@ -234,7 +234,7 @@ async fn fail_create_metadata_twice() {
     );
 
     let transaction = Transaction::new_signed_with_payer(
-        &[ix.clone()],
+        core::slice::from_ref(&ix),
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
         context.last_blockhash,
