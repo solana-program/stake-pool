@@ -83,6 +83,7 @@ pub(crate) fn get_stake_state(
     Ok(stake_state)
 }
 
+#[allow(clippy::result_large_err)]
 pub(crate) fn get_stake_pools(
     rpc_client: &RpcClient,
     stake_pool_program_id: &Pubkey,
@@ -127,6 +128,7 @@ pub(crate) fn get_stake_pools(
         })
 }
 
+#[allow(clippy::result_large_err)]
 pub(crate) fn get_all_stake(
     rpc_client: &RpcClient,
     authorized_staker: &Pubkey,

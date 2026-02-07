@@ -201,6 +201,7 @@ fn get_latest_blockhash(client: &RpcClient) -> Result<Hash, Error> {
         .0)
 }
 
+#[allow(clippy::result_large_err)]
 fn send_transaction_no_wait(
     config: &Config,
     transaction: Transaction,
@@ -215,6 +216,7 @@ fn send_transaction_no_wait(
     Ok(())
 }
 
+#[allow(clippy::result_large_err)]
 fn send_transaction(
     config: &Config,
     transaction: Transaction,

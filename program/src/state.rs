@@ -570,6 +570,7 @@ pub struct ValidatorListHeader {
     Copy,
     Clone,
     Debug,
+    Default,
     PartialEq,
     BorshDeserialize,
     BorshSerialize,
@@ -577,6 +578,7 @@ pub struct ValidatorListHeader {
 )]
 pub enum StakeStatus {
     /// Stake account is active, there may be a transient stake as well
+    #[default]
     Active,
     /// Only transient stake account exists, when a transient stake is
     /// deactivating during validator removal
@@ -590,11 +592,6 @@ pub enum StakeStatus {
     /// Both the transient and validator stake account are deactivating, when
     /// a validator is removed with a transient stake active
     DeactivatingAll,
-}
-impl Default for StakeStatus {
-    fn default() -> Self {
-        Self::Active
-    }
 }
 
 /// Wrapper struct that can be `Pod`, containing a byte that *should* be a valid
@@ -856,7 +853,7 @@ impl ValidatorListHeader {
     }
 
     /// Extracts the validator list into its header and internal `BigVec`
-    pub fn deserialize_vec(data: &mut [u8]) -> Result<(Self, BigVec), ProgramError> {
+    pub fn deserialize_vec(data: &mut [u8]) -> Result<(Self, BigVec<'_>), ProgramError> {
         let mut data_mut = data.borrow();
         let header = ValidatorListHeader::deserialize(&mut data_mut)?;
         let length = get_instance_packed_len(&header)?;
@@ -871,19 +868,15 @@ impl ValidatorListHeader {
 /// Wrapper type that "counts down" epochs, which is Borsh-compatible with the
 /// native `Option`
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub enum FutureEpoch<T> {
     /// Nothing is set
+    #[default]
     None,
     /// Value is ready after the next epoch boundary
     One(T),
     /// Value is ready after two epoch boundaries
     Two(T),
-}
-impl<T> Default for FutureEpoch<T> {
-    fn default() -> Self {
-        Self::None
-    }
 }
 impl<T> FutureEpoch<T> {
     /// Create a new value to be unlocked in a two epochs
