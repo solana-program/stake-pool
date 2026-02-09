@@ -68,6 +68,8 @@ pub fn program_test() -> ProgramTest {
 
 pub fn program_test_with_metadata_program() -> ProgramTest {
     let mut program_test = ProgramTest::default();
+    program_test.add_upgradeable_program_to_genesis("solana_stake_program", &stake::program::id());
+    program_test.deactivate_feature(stake_raise_minimum_delegation_to_1_sol::id());
     program_test.add_program("spl_stake_pool", id(), processor!(Processor::process));
     program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
     program_test.prefer_bpf(false);
