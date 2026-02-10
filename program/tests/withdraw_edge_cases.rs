@@ -480,7 +480,7 @@ async fn fail_with_transient() {
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
-    let stake_minimum_delegation = stake_get_minimum_delegation(
+    let stake_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
