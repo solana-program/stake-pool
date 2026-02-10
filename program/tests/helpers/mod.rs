@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use {
+    agave_feature_set::stake_raise_minimum_delegation_to_1_sol,
     borsh::BorshDeserialize,
     solana_program::{
         borsh1::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
@@ -12,10 +13,11 @@ use {
     },
     solana_program_test::{processor, BanksClient, ProgramTest, ProgramTestContext},
     solana_sdk::{
-        account::{Account as SolanaAccount, WritableAccount},
+        account::{Account as SolanaAccount, AccountSharedData, ReadableAccount, WritableAccount},
         clock::{Clock, Epoch},
         compute_budget::ComputeBudgetInstruction,
         signature::{Keypair, Signer},
+        sysvar::{stake_history::StakeHistory, SysvarId},
         transaction::Transaction,
         transport::TransportError,
     },
@@ -53,6 +55,8 @@ const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to b
 
 pub fn program_test() -> ProgramTest {
     let mut program_test = ProgramTest::new("spl_stake_pool", id(), processor!(Processor::process));
+    program_test.add_upgradeable_program_to_genesis("solana_stake_program", &stake::program::id());
+    program_test.deactivate_feature(stake_raise_minimum_delegation_to_1_sol::id());
     program_test.prefer_bpf(false);
     program_test.add_program(
         "spl_token_2022",
@@ -64,6 +68,8 @@ pub fn program_test() -> ProgramTest {
 
 pub fn program_test_with_metadata_program() -> ProgramTest {
     let mut program_test = ProgramTest::default();
+    program_test.add_upgradeable_program_to_genesis("solana_stake_program", &stake::program::id());
+    program_test.deactivate_feature(stake_raise_minimum_delegation_to_1_sol::id());
     program_test.add_program("spl_stake_pool", id(), processor!(Processor::process));
     program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
     program_test.prefer_bpf(false);
@@ -81,6 +87,41 @@ pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Sol
         .await
         .expect("client error")
         .expect("account not found")
+}
+
+pub async fn fix_stake_history(context: &mut ProgramTestContext) {
+    let clock = bincode::deserialize::<Clock>(
+        get_account(&mut context.banks_client, &Clock::id())
+            .await
+            .data(),
+    )
+    .unwrap();
+
+    let stake_history_account = get_account(&mut context.banks_client, &StakeHistory::id()).await;
+
+    let mut stake_history =
+        bincode::deserialize::<StakeHistory>(stake_history_account.data()).unwrap();
+
+    let mut stake_history_entry = stake_history.get(0).cloned().unwrap_or_default();
+    stake_history_entry.effective +=
+        stake_history_entry.activating - stake_history_entry.deactivating;
+    stake_history_entry.activating = 0;
+    stake_history_entry.deactivating = 0;
+
+    for epoch in 1..clock.epoch {
+        stake_history.add(epoch, stake_history_entry.clone());
+    }
+
+    let stake_history_account = AccountSharedData::create(
+        stake_history_account.lamports(),
+        bincode::serialize(&stake_history).unwrap(),
+        *stake_history_account.owner(),
+        false,
+        u64::MAX,
+    );
+
+    context.set_account(&StakeHistory::id(), &stake_history_account);
+    context.warp_to_slot(clock.slot + 1).unwrap();
 }
 
 #[allow(clippy::too_many_arguments)]
