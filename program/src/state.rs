@@ -9,18 +9,16 @@ use {
     bytemuck::{Pod, Zeroable},
     num_derive::{FromPrimitive, ToPrimitive},
     num_traits::{FromPrimitive, ToPrimitive},
-    solana_program::{
-        account_info::AccountInfo,
-        borsh1::get_instance_packed_len,
-        msg,
-        program_error::ProgramError,
-        program_memory::sol_memcmp,
-        program_pack::{Pack, Sealed},
-        pubkey::{Pubkey, PUBKEY_BYTES},
-        stake::state::Lockup,
-    },
+    solana_account_info::AccountInfo,
+    solana_borsh::v1::get_instance_packed_len,
+    solana_msg::msg,
+    solana_program_error::ProgramError,
+    solana_program_memory::sol_memcmp,
+    solana_program_pack::{Pack, Sealed},
+    solana_pubkey::{Pubkey, PUBKEY_BYTES},
+    solana_stake_interface::state::Lockup,
     spl_pod::primitives::{PodU32, PodU64},
-    spl_token_2022::{
+    spl_token_2022_interface::{
         extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
         state::{Account, AccountState, Mint},
     },
@@ -730,11 +728,13 @@ impl ValidatorStakeInfo {
     /// Performs a very cheap comparison, for checking if this validator stake
     /// info matches the vote account address
     pub fn memcmp_pubkey(data: &[u8], vote_address: &Pubkey) -> bool {
-        sol_memcmp(
-            &data[41..41_usize.saturating_add(PUBKEY_BYTES)],
-            vote_address.as_ref(),
-            PUBKEY_BYTES,
-        ) == 0
+        unsafe {
+            sol_memcmp(
+                &data[41..41_usize.saturating_add(PUBKEY_BYTES)],
+                vote_address.as_ref(),
+                PUBKEY_BYTES,
+            ) == 0
+        }
     }
 
     /// Performs a comparison, used to check if this validator stake
@@ -1052,11 +1052,9 @@ mod test {
     use {
         super::*,
         proptest::prelude::*,
-        solana_program::{
-            borsh1::{get_packed_len, try_from_slice_unchecked},
-            clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
-            native_token::LAMPORTS_PER_SOL,
-        },
+        solana_borsh::v1::{get_packed_len, try_from_slice_unchecked},
+        solana_clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
+        solana_native_token::LAMPORTS_PER_SOL,
     };
 
     fn uninitialized_validator_list() -> ValidatorList {

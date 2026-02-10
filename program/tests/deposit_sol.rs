@@ -17,7 +17,7 @@ use {
         instruction::{self, FundingType},
         state, MINIMUM_RESERVE_LAMPORTS,
     },
-    spl_token::error as token_error,
+    spl_token_interface::error as token_error,
     test_case::test_case,
 };
 
@@ -62,8 +62,8 @@ async fn setup(
     )
 }
 
-#[test_case(spl_token::id(); "token")]
-#[test_case(spl_token_2022::id(); "token-2022")]
+#[test_case(spl_token_interface::id(); "token")]
+#[test_case(spl_token_2022_interface::id(); "token-2022")]
 #[tokio::test]
 async fn success(token_program_id: Pubkey) {
     let (mut context, stake_pool_accounts, _user, pool_token_account) =
@@ -139,7 +139,8 @@ async fn success(token_program_id: Pubkey) {
 
 #[tokio::test]
 async fn fail_with_wrong_token_program_id() {
-    let (context, stake_pool_accounts, _user, pool_token_account) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts, _user, pool_token_account) =
+        setup(spl_token_interface::id()).await;
 
     let wrong_token_program = Keypair::new();
 
@@ -179,7 +180,7 @@ async fn fail_with_wrong_token_program_id() {
 #[tokio::test]
 async fn fail_with_wrong_withdraw_authority() {
     let (mut context, mut stake_pool_accounts, _user, pool_token_account) =
-        setup(spl_token::id()).await;
+        setup(spl_token_interface::id()).await;
 
     stake_pool_accounts.withdraw_authority = Pubkey::new_unique();
 
@@ -208,7 +209,7 @@ async fn fail_with_wrong_withdraw_authority() {
 #[tokio::test]
 async fn fail_with_wrong_mint_for_receiver_acc() {
     let (mut context, stake_pool_accounts, _user, _pool_token_account) =
-        setup(spl_token::id()).await;
+        setup(spl_token_interface::id()).await;
 
     let outside_mint = Keypair::new();
     let outside_withdraw_auth = Keypair::new();
@@ -410,7 +411,7 @@ async fn fail_without_sol_deposit_authority_signature() {
 #[tokio::test]
 async fn success_with_referral_fee() {
     let (mut context, stake_pool_accounts, _user, pool_token_account) =
-        setup(spl_token::id()).await;
+        setup(spl_token_interface::id()).await;
 
     let referrer = Keypair::new();
     let referrer_token_account = Keypair::new();
@@ -441,7 +442,7 @@ async fn success_with_referral_fee() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &referrer_token_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
-            &spl_token::id(),
+            &spl_token_interface::id(),
             TEST_STAKE_AMOUNT,
         )],
         Some(&context.payer.pubkey()),
@@ -464,7 +465,8 @@ async fn success_with_referral_fee() {
 
 #[tokio::test]
 async fn fail_with_invalid_referrer() {
-    let (context, stake_pool_accounts, _user, pool_token_account) = setup(spl_token::id()).await;
+    let (context, stake_pool_accounts, _user, pool_token_account) =
+        setup(spl_token_interface::id()).await;
 
     let invalid_token_account = Keypair::new();
 
@@ -479,7 +481,7 @@ async fn fail_with_invalid_referrer() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &invalid_token_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
-            &spl_token::id(),
+            &spl_token_interface::id(),
             TEST_STAKE_AMOUNT,
         )],
         Some(&context.payer.pubkey()),
@@ -501,8 +503,8 @@ async fn fail_with_invalid_referrer() {
     }
 }
 
-#[test_case(spl_token::id(); "token")]
-#[test_case(spl_token_2022::id(); "token-2022")]
+#[test_case(spl_token_interface::id(); "token")]
+#[test_case(spl_token_2022_interface::id(); "token-2022")]
 #[tokio::test]
 async fn success_with_slippage(token_program_id: Pubkey) {
     let (mut context, stake_pool_accounts, _user, pool_token_account) =

@@ -2,11 +2,8 @@
 #![allow(clippy::arithmetic_side_effects)] // checked math involves too many compute units
 
 use {
-    arrayref::array_ref,
-    borsh::BorshDeserialize,
-    bytemuck::Pod,
-    solana_program::{program_error::ProgramError, program_memory::sol_memmove},
-    std::mem,
+    arrayref::array_ref, borsh::BorshDeserialize, bytemuck::Pod,
+    solana_program_error::ProgramError, solana_program_memory::sol_memmove, std::mem,
 };
 
 /// Contains easy to use utilities for a big vector of Borsh-compatible types,

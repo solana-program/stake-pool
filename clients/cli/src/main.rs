@@ -24,6 +24,8 @@ use {
     },
     solana_cli_output::OutputFormat,
     solana_client::rpc_client::RpcClient,
+    solana_commitment_config::CommitmentConfig,
+    solana_compute_budget_interface::ComputeBudgetInstruction,
     solana_program::{
         borsh1::{get_instance_packed_len, get_packed_len},
         instruction::Instruction,
@@ -32,8 +34,6 @@ use {
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
-        commitment_config::CommitmentConfig,
-        compute_budget::ComputeBudgetInstruction,
         hash::Hash,
         message::Message,
         native_token::{self, Sol},
@@ -43,8 +43,10 @@ use {
     },
     solana_stake_interface as stake,
     solana_system_interface::instruction as system_instruction,
-    spl_associated_token_account::instruction::create_associated_token_account,
-    spl_associated_token_account_client::address::get_associated_token_address_with_program_id,
+    spl_associated_token_account_interface::{
+        address::get_associated_token_address_with_program_id,
+        instruction::create_associated_token_account,
+    },
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
@@ -53,7 +55,7 @@ use {
         state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
         MINIMUM_RESERVE_LAMPORTS,
     },
-    spl_token_2022::{
+    spl_token_2022_interface::{
         check_spl_token_program_account, extension::StateWithExtensions, state::Mint,
     },
     std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
@@ -404,7 +406,7 @@ fn setup_mint_account(
                     .into());
                 }
             } else {
-                let instructions = vec![spl_token_2022::instruction::initialize_mint(
+                let instructions = vec![spl_token_2022_interface::instruction::initialize_mint(
                     &account.owner,
                     &mint_keypair.pubkey(),
                     withdraw_authority,
@@ -429,11 +431,11 @@ fn setup_mint_account(
             &config.fee_payer.pubkey(),
             &mint_keypair.pubkey(),
             mint_account_balance,
-            spl_token_2022::state::Mint::LEN as u64,
-            &spl_token::id(),
+            spl_token_2022_interface::state::Mint::LEN as u64,
+            &spl_token_interface::id(),
         ),
-        spl_token_2022::instruction::initialize_mint(
-            &spl_token::id(),
+        spl_token_2022_interface::instruction::initialize_mint(
+            &spl_token_interface::id(),
             &mint_keypair.pubkey(),
             withdraw_authority,
             None,
@@ -449,7 +451,7 @@ fn setup_mint_account(
         mint_keypair.pubkey()
     );
     send_transaction(config, transaction)?;
-    Ok(spl_token::id())
+    Ok(spl_token_interface::id())
 }
 
 fn setup_pool_fee_account(
@@ -642,10 +644,10 @@ fn command_create_pool(
         + MINIMUM_RESERVE_LAMPORTS;
     let mint_account_balance = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(spl_token_2022::state::Mint::LEN)?;
+        .get_minimum_balance_for_rent_exemption(spl_token_2022_interface::state::Mint::LEN)?;
     let pool_fee_account_balance = config
         .rpc_client
-        .get_minimum_balance_for_rent_exemption(spl_token_2022::state::Account::LEN)?;
+        .get_minimum_balance_for_rent_exemption(spl_token_2022_interface::state::Account::LEN)?;
     let stake_pool_account_lamports = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(get_packed_len::<StakePool>())?;
@@ -660,7 +662,7 @@ fn command_create_pool(
         + stake_pool_account_lamports
         + validator_list_balance;
 
-    let default_decimals = spl_token_2022::native_mint::DECIMALS;
+    let default_decimals = spl_token_2022_interface::native_mint::DECIMALS;
 
     // Calculate withdraw authority used for minting pool tokens
     let (withdraw_authority, _) = find_withdraw_authority_program_address(
@@ -1000,7 +1002,7 @@ fn add_associated_token_account(
 
         let min_account_balance = config
             .rpc_client
-            .get_minimum_balance_for_rent_exemption(spl_token_2022::state::Account::LEN)
+            .get_minimum_balance_for_rent_exemption(spl_token_2022_interface::state::Account::LEN)
             .unwrap();
 
         instructions.push(create_associated_token_account(
@@ -1471,7 +1473,7 @@ fn command_list(
         }
     }
     let total_pool_tokens =
-        spl_token_2022::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals);
+        spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals);
     let mut cli_stake_pool = CliStakePool::from((
         *stake_pool_address,
         stake_pool,
@@ -1718,7 +1720,7 @@ fn prepare_withdraw_accounts(
     if remaining_amount > 0 {
         return Err(format!(
             "No stake accounts found in this pool with enough balance to withdraw {} pool tokens.",
-            spl_token_2022::amount_to_ui_amount(pool_amount, pool_mint.decimals)
+            spl_token::amount_to_ui_amount(pool_amount, pool_mint.decimals)
         )
         .into());
     }
@@ -1741,7 +1743,7 @@ fn command_withdraw_stake(
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
-    let pool_amount = spl_token_2022::ui_amount_to_amount(pool_amount, pool_mint.decimals);
+    let pool_amount = spl_token::ui_amount_to_amount(pool_amount, pool_mint.decimals);
 
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&config.stake_pool_program_id, stake_pool_address)
@@ -1766,8 +1768,8 @@ fn command_withdraw_stake(
     if token_account.amount < pool_amount {
         return Err(format!(
             "Not enough token balance to withdraw {} pool tokens.\nMaximum withdraw amount is {} pool tokens.",
-            spl_token_2022::amount_to_ui_amount(pool_amount, pool_mint.decimals),
-            spl_token_2022::amount_to_ui_amount(token_account.amount, pool_mint.decimals)
+            spl_token::amount_to_ui_amount(pool_amount, pool_mint.decimals),
+            spl_token::amount_to_ui_amount(token_account.amount, pool_mint.decimals)
         )
         .into());
     }
@@ -1905,7 +1907,7 @@ fn command_withdraw_stake(
 
     instructions.push(
         // Approve spending token
-        spl_token_2022::instruction::approve(
+        spl_token_2022_interface::instruction::approve(
             &stake_pool.token_program_id,
             &pool_token_account,
             &user_transfer_authority.pubkey(),
@@ -1927,10 +1929,7 @@ fn command_withdraw_stake(
             println!(
                 "Withdrawing {}, or {} pool tokens, from stake account {}, delegated to {}",
                 Sol(sol_withdraw_amount),
-                spl_token_2022::amount_to_ui_amount(
-                    withdraw_account.pool_amount,
-                    pool_mint.decimals
-                ),
+                spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
                 withdraw_account.stake_address,
                 vote_address,
             );
@@ -1938,10 +1937,7 @@ fn command_withdraw_stake(
             println!(
                 "Withdrawing {}, or {} pool tokens, from stake account {}",
                 Sol(sol_withdraw_amount),
-                spl_token_2022::amount_to_ui_amount(
-                    withdraw_account.pool_amount,
-                    pool_mint.decimals
-                ),
+                spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
                 withdraw_account.stake_address,
             );
         }
@@ -2016,7 +2012,7 @@ fn command_withdraw_sol(
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
-    let pool_amount = spl_token_2022::ui_amount_to_amount(pool_amount, pool_mint.decimals);
+    let pool_amount = spl_token::ui_amount_to_amount(pool_amount, pool_mint.decimals);
 
     let pool_token_account =
         pool_token_account.unwrap_or(get_associated_token_address_with_program_id(
@@ -2034,8 +2030,8 @@ fn command_withdraw_sol(
     if token_account.amount < pool_amount {
         return Err(format!(
             "Not enough token balance to withdraw {} pool tokens.\nMaximum withdraw amount is {} pool tokens.",
-            spl_token_2022::amount_to_ui_amount(pool_amount, pool_mint.decimals),
-            spl_token_2022::amount_to_ui_amount(token_account.amount, pool_mint.decimals)
+            spl_token::amount_to_ui_amount(pool_amount, pool_mint.decimals),
+            spl_token::amount_to_ui_amount(token_account.amount, pool_mint.decimals)
         )
         .into());
     }
@@ -2050,7 +2046,7 @@ fn command_withdraw_sol(
 
     let mut instructions = vec![
         // Approve spending token
-        spl_token_2022::instruction::approve(
+        spl_token_2022_interface::instruction::approve(
             &stake_pool.token_program_id,
             &pool_token_account,
             &user_transfer_authority.pubkey(),

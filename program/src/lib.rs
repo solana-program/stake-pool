@@ -12,12 +12,8 @@ pub mod state;
 #[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
 
-// Export current sdk types for downstream users building with a different sdk
-// version
-pub use solana_program;
 use {
-    crate::state::Fee,
-    solana_program::{pubkey::Pubkey, stake::state::Meta},
+    crate::state::Fee, solana_pubkey::Pubkey, solana_stake_interface::state::Meta,
     std::num::NonZeroU32,
 };
 
@@ -161,10 +157,10 @@ pub fn find_ephemeral_stake_program_address(
     )
 }
 
-solana_program::declare_id!("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy");
+solana_pubkey::declare_id!("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy");
 /// Program id for devnet
 pub mod devnet {
-    solana_program::declare_id!("DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib");
+    solana_pubkey::declare_id!("DPoo15wWDqpPJJtS2MUZ49aRxqz5ZaaJCJP4z8bLuib");
 }
 
 #[cfg(test)]

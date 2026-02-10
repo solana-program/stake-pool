@@ -10,16 +10,16 @@ use {
     solana_sdk::{
         hash::Hash,
         signature::{Keypair, Signer},
-        stake::state::StakeStateV2,
         transaction::TransactionError,
     },
+    solana_stake_interface::state::StakeStateV2,
     spl_pod::primitives::PodU64,
     spl_stake_pool::{
         error::StakePoolError,
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_RESERVE_LAMPORTS,
     },
-    spl_token::state::Mint,
+    spl_token_interface::state::Mint,
     std::num::NonZeroU32,
 };
 

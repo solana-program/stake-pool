@@ -2,8 +2,9 @@
 name = "spl-stake-pool"
 version = "2.0.3"
 description = "Solana Program Library Stake Pool"
-authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
-repository = "https://github.com/solana-labs/solana-program-library"
+homepage = "https://www.solana-program.com/docs/stake-pool"
+authors = ["Anza Maintainers <maintainers@anza.xyz>"]
+repository = "https://github.com/solana-program/stake-pool"
 license = "Apache-2.0"
 edition = "2021"
 
@@ -19,29 +20,44 @@ num-traits = "0.2"
 num_enum = "0.7.4"
 serde = "1.0.219"
 serde_derive = "1.0.103"
-solana-program = "2.3.0"
+solana-account-info = "3.0.0"
+solana-borsh = "3.0.0"
+solana-clock = "3.0.0"
+solana-cpi = "3.0.0"
+solana-epoch-rewards = "3.0.0"
+solana-instruction = { version = "3.0.0", features = ["std"] }
+solana-msg = "3.0.0"
+solana-program-entrypoint = "3.0.0"
+solana-program-error = "3.0.0"
+solana-program-memory = "3.0.0"
+solana-program-pack = "3.0.0"
+solana-pubkey = { version = "4.0.0", features = ["curve25519"] }
+solana-rent = "4.0.0"
+solana-sdk-ids = "3.1.0"
 solana-security-txt = "1.1.1"
-solana-stake-interface = "1"
-solana-system-interface = "1"
-spl-pod = { version = "0.5.1", features = [
+solana-stake-interface = { version = "2.0.0", features = ["bincode", "borsh"] }
+solana-sysvar-id = "3.0.0"
+solana-sysvar = { version = "4.0.0", features = ["bincode"] }
+solana-system-interface = { version = "3.0.0", features = ["bincode"] }
+spl-pod = { version = "0.7.1", features = [
   "borsh",
 ] }
-spl-token-2022 = { version = "9.0.0", features = [
-  "no-entrypoint",
-] }
+spl-token-2022-interface = "2.1.0"
 thiserror = "2.0"
 bincode = "1.3.1"
 
 [dev-dependencies]
-agave-feature-set = "2.3.4"
+agave-feature-set = "3.1.8"
 assert_matches = "1.5.0"
 proptest = "1.7"
-solana-program-test = "2.3.4"
-solana-sdk = "2.2.1"
-solana-vote-program = "2.2.0"
-spl-token = { version = "8.0", features = [
-  "no-entrypoint",
-] }
+solana-account = { version = "3.0.0", features = ["bincode"] }
+solana-compute-budget-interface = "3.0.0"
+solana-native-token = "3.0.0"
+solana-program = "3.0.0"
+solana-program-test = { version = "3.1.8", features = ["agave-unstable-api"] }
+solana-sdk = "3.0.0"
+solana-vote-interface = { version = "3.0.0", features = ["bincode"] }
+spl-token-interface = "2.0.0"
 test-case = "3.3"
 
 [lib]
