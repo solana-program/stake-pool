@@ -15,14 +15,10 @@ use {
         MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-        stake,
-        stake_history::Epoch,
-        system_program, sysvar,
-    },
+    solana_instruction::{AccountMeta, Instruction},
+    solana_program_error::ProgramError,
+    solana_pubkey::Pubkey,
+    solana_stake_interface::stake_history::Epoch,
     std::num::NonZeroU32,
 };
 
@@ -90,7 +86,7 @@ pub enum StakePoolInstruction {
     ///   The stake account will have the rent-exempt amount plus
     ///   `max(
     ///     crate::MINIMUM_ACTIVE_STAKE,
-    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///     solana_stake_interface::tools::get_minimum_delegation()
     ///   )`.
     ///   It is funded from the stake pool reserve.
     ///
@@ -116,7 +112,7 @@ pub enum StakePoolInstruction {
     ///
     ///   Only succeeds if the validator stake account has the minimum of
     ///   `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.   plus the
+    /// solana_stake_interface::tools::get_minimum_delegation())`.   plus the
     /// rent-exempt amount.
     ///
     ///   0. `[w]` Stake pool
@@ -147,7 +143,7 @@ pub enum StakePoolInstruction {
     /// The instruction only succeeds if the transient stake account does not
     /// exist. The amount of lamports to move must be at least rent-exemption
     /// plus `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    /// solana_stake_interface::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -176,7 +172,7 @@ pub enum StakePoolInstruction {
     /// This instruction only succeeds if the transient stake account does not
     /// exist. The minimum amount to move is rent-exemption plus
     /// `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    /// solana_stake_interface::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -304,7 +300,7 @@ pub enum StakePoolInstruction {
     ///   amount of pool tokens, and if the withdrawal keeps the total
     ///   staked amount above the minimum of rent-exempt amount plus `max(
     ///     crate::MINIMUM_ACTIVE_STAKE,
-    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///     solana_stake_interface::tools::get_minimum_delegation()
     ///   )`.
     ///
     ///   When allowing withdrawals, the order of priority goes:
@@ -451,7 +447,7 @@ pub enum StakePoolInstruction {
     ///
     /// The minimum amount to move is rent-exemption plus
     /// `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    /// solana_stake_interface::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -499,7 +495,7 @@ pub enum StakePoolInstruction {
     ///
     ///  The amount of lamports to move must be at least
     /// `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    /// solana_stake_interface::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -539,7 +535,7 @@ pub enum StakePoolInstruction {
     /// The instruction only succeeds if the transient stake account does not
     /// exist. The amount of lamports to move must be at least rent-exemption
     /// plus `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    /// solana_stake_interface::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -665,7 +661,7 @@ pub enum StakePoolInstruction {
     ///   amount of pool tokens, and if the withdrawal keeps the total
     ///   staked amount above the minimum of rent-exempt amount plus `max(
     ///     crate::MINIMUM_ACTIVE_STAKE,
-    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///     solana_stake_interface::tools::get_minimum_delegation()
     ///   )`.
     ///
     ///   0. `[w]` Stake pool
@@ -808,13 +804,13 @@ pub fn add_validator_to_pool(
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake, false),
         AccountMeta::new_readonly(*validator, false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::rent::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
         #[allow(deprecated)]
-        AccountMeta::new_readonly(stake::config::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::config::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     let data = borsh::to_vec(&StakePoolInstruction::AddValidatorToPool(
         seed.map(|s| s.get()).unwrap_or(0),
@@ -845,8 +841,8 @@ pub fn remove_validator_from_pool(
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
         AccountMeta::new(*transient_stake_account, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -879,10 +875,10 @@ pub fn decrease_validator_stake(
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*validator_stake, false),
         AccountMeta::new(*transient_stake, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::rent::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -920,10 +916,10 @@ pub fn decrease_additional_validator_stake(
         AccountMeta::new(*validator_stake, false),
         AccountMeta::new(*ephemeral_stake, false),
         AccountMeta::new(*transient_stake, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -959,10 +955,10 @@ pub fn decrease_validator_stake_with_reserve(
         AccountMeta::new(*reserve_stake, false),
         AccountMeta::new(*validator_stake, false),
         AccountMeta::new(*transient_stake, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -999,13 +995,13 @@ pub fn increase_validator_stake(
         AccountMeta::new(*transient_stake, false),
         AccountMeta::new_readonly(*validator_stake, false),
         AccountMeta::new_readonly(*validator, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::rent::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
         #[allow(deprecated)]
-        AccountMeta::new_readonly(stake::config::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::config::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -1045,12 +1041,12 @@ pub fn increase_additional_validator_stake(
         AccountMeta::new(*transient_stake, false),
         AccountMeta::new_readonly(*validator_stake, false),
         AccountMeta::new_readonly(*validator, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
         #[allow(deprecated)]
-        AccountMeta::new_readonly(stake::config::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::config::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -1100,12 +1096,12 @@ pub fn redelegate(
         AccountMeta::new(*destination_transient_stake, false),
         AccountMeta::new_readonly(*destination_validator_stake, false),
         AccountMeta::new_readonly(*validator, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
         #[allow(deprecated)]
-        AccountMeta::new_readonly(stake::config::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::config::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -1453,9 +1449,9 @@ pub fn update_validator_list_balance(
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*validator_list_address, false),
         AccountMeta::new(*reserve_stake, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     accounts.append(
         &mut validator_vote_accounts
@@ -1519,9 +1515,9 @@ pub fn update_validator_list_balance_chunk(
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*validator_list_address, false),
         AccountMeta::new(*reserve_stake, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     let validator_list_subslice = validator_list
         .validators
@@ -1790,18 +1786,18 @@ fn deposit_stake_internal(
             true,
         ));
         instructions.extend_from_slice(&[
-            stake::instruction::authorize(
+            solana_stake_interface::instruction::authorize(
                 deposit_stake_address,
                 deposit_stake_withdraw_authority,
                 stake_pool_deposit_authority,
-                stake::state::StakeAuthorize::Staker,
+                solana_stake_interface::state::StakeAuthorize::Staker,
                 None,
             ),
-            stake::instruction::authorize(
+            solana_stake_interface::instruction::authorize(
                 deposit_stake_address,
                 deposit_stake_withdraw_authority,
                 stake_pool_deposit_authority,
-                stake::state::StakeAuthorize::Withdrawer,
+                solana_stake_interface::state::StakeAuthorize::Withdrawer,
                 None,
             ),
         ]);
@@ -1813,18 +1809,18 @@ fn deposit_stake_internal(
             false,
         ));
         instructions.extend_from_slice(&[
-            stake::instruction::authorize(
+            solana_stake_interface::instruction::authorize(
                 deposit_stake_address,
                 deposit_stake_withdraw_authority,
                 &stake_pool_deposit_authority,
-                stake::state::StakeAuthorize::Staker,
+                solana_stake_interface::state::StakeAuthorize::Staker,
                 None,
             ),
-            stake::instruction::authorize(
+            solana_stake_interface::instruction::authorize(
                 deposit_stake_address,
                 deposit_stake_withdraw_authority,
                 &stake_pool_deposit_authority,
-                stake::state::StakeAuthorize::Withdrawer,
+                solana_stake_interface::state::StakeAuthorize::Withdrawer,
                 None,
             ),
         ]);
@@ -1839,10 +1835,10 @@ fn deposit_stake_internal(
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ]);
     instructions.push(
         if let Some(minimum_pool_tokens_out) = minimum_pool_tokens_out {
@@ -2040,7 +2036,7 @@ fn deposit_sol_internal(
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(sol_deposit_authority) = sol_deposit_authority {
@@ -2224,9 +2220,9 @@ fn withdraw_stake_internal(
         AccountMeta::new(*user_pool_token_account, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
     ];
     if let Some(minimum_lamports_out) = minimum_lamports_out {
         Instruction {
@@ -2340,9 +2336,9 @@ fn withdraw_sol_internal(
         AccountMeta::new(*lamports_to, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake::program::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::clock::id(), false),
+        AccountMeta::new_readonly(solana_sdk_ids::sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(solana_stake_interface::program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(sol_withdraw_authority) = sol_withdraw_authority {
@@ -2636,7 +2632,7 @@ pub fn create_token_metadata(
         AccountMeta::new(*payer, true),
         AccountMeta::new(token_metadata, false),
         AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(solana_system_interface::program::id(), false),
     ];
 
     Instruction {

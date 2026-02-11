@@ -9,10 +9,9 @@ use {
     solana_program_test::*,
     solana_sdk::{
         signature::Signer,
-        stake::instruction::StakeError,
         transaction::{Transaction, TransactionError},
     },
-    solana_stake_interface as stake,
+    solana_stake_interface::{self as stake, error::StakeError},
     spl_stake_pool::{
         error::StakePoolError, find_ephemeral_stake_program_address,
         find_transient_stake_program_address, id, instruction, MINIMUM_RESERVE_LAMPORTS,

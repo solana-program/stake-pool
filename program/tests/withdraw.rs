@@ -16,12 +16,12 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{error::StakePoolError, id, instruction, state},
-    spl_token::error::TokenError,
+    spl_token_interface::error::TokenError,
     test_case::test_case,
 };
 
-#[test_case(spl_token::id(); "token")]
-#[test_case(spl_token_2022::id(); "token-2022")]
+#[test_case(spl_token_interface::id(); "token")]
+#[test_case(spl_token_2022_interface::id(); "token-2022")]
 #[tokio::test]
 async fn success(token_program_id: Pubkey) {
     _success(token_program_id, SuccessTestType::Success).await;
@@ -29,7 +29,11 @@ async fn success(token_program_id: Pubkey) {
 
 #[tokio::test]
 async fn success_with_closed_manager_fee_account() {
-    _success(spl_token::id(), SuccessTestType::UninitializedManagerFee).await;
+    _success(
+        spl_token_interface::id(),
+        SuccessTestType::UninitializedManagerFee,
+    )
+    .await;
 }
 
 enum SuccessTestType {
@@ -265,7 +269,7 @@ async fn fail_with_wrong_stake_program() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_stake_program = Pubkey::new_unique();
@@ -282,7 +286,7 @@ async fn fail_with_wrong_stake_program() {
         AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(spl_token_interface::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
     ];
     let instruction = Instruction {
@@ -326,7 +330,7 @@ async fn fail_with_wrong_withdraw_authority() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.withdraw_authority = Keypair::new().pubkey();
@@ -368,7 +372,7 @@ async fn fail_with_wrong_token_program_id() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_token_program = Keypair::new();
@@ -419,7 +423,7 @@ async fn fail_with_wrong_validator_list() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.validator_list = Keypair::new();
@@ -463,7 +467,7 @@ async fn fail_with_unknown_validator() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     let unknown_stake = create_unknown_validator_stake(
         &mut context.banks_client,
@@ -510,7 +514,7 @@ async fn fail_double_withdraw_to_the_same_account() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -576,7 +580,7 @@ async fn fail_without_token_approval() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     revoke_tokens(
         &mut context.banks_client,
@@ -628,7 +632,7 @@ async fn fail_with_not_enough_tokens() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id(), 0).await;
+    ) = setup_for_withdraw(spl_token_interface::id(), 0).await;
 
     let last_blockhash = context
         .banks_client
@@ -759,8 +763,8 @@ async fn fail_with_not_enough_tokens() {
     );
 }
 
-#[test_case(spl_token::id(); "token")]
-#[test_case(spl_token_2022::id(); "token-2022")]
+#[test_case(spl_token_interface::id(); "token")]
+#[test_case(spl_token_2022_interface::id(); "token-2022")]
 #[tokio::test]
 async fn success_with_slippage(token_program_id: Pubkey) {
     let (

@@ -8,10 +8,7 @@ use {
     },
     solana_program_test::*,
     solana_sdk::{
-        account::{Account, WritableAccount},
-        clock::Epoch,
-        signature::Signer,
-        transaction::TransactionError,
+        account::Account, clock::Epoch, signature::Signer, transaction::TransactionError,
     },
     solana_stake_interface::{
         program,
@@ -41,13 +38,13 @@ async fn setup(
     let mut data = vec![0; std::mem::size_of::<StakeStateV2>()];
     bincode::serialize_into(&mut data[..], forced_stake).unwrap();
 
-    let stake_account = Account::create(
-        TEST_STAKE_AMOUNT + STAKE_ACCOUNT_RENT_EXEMPTION,
+    let stake_account = Account {
+        lamports: TEST_STAKE_AMOUNT + STAKE_ACCOUNT_RENT_EXEMPTION,
         data,
-        program::id(),
-        false,
-        Epoch::default(),
-    );
+        owner: program::id(),
+        executable: false,
+        rent_epoch: Epoch::default(),
+    };
 
     let raw_validator_seed = 42;
     let validator_seed = NonZeroU32::new(raw_validator_seed);

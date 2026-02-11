@@ -292,10 +292,7 @@ async fn fail_double_remove() {
 
     assert_eq!(
         error,
-        TransactionError::InstructionError(
-            0,
-            InstructionError::BorshIoError("Unknown".to_string())
-        )
+        TransactionError::InstructionError(0, InstructionError::BorshIoError,)
     );
 }
 

@@ -610,7 +610,7 @@ async fn fail_additional_with_increasing() {
 
     // warp forward to activation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    context.warp_to_slot(first_normal_slot + 1).unwrap();
+    context.warp_to_slot(first_normal_slot + 5).unwrap();
     let last_blockhash = context
         .banks_client
         .get_new_latest_blockhash(&context.last_blockhash)
