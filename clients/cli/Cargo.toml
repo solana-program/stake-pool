@@ -9,7 +9,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-clap = "2.33.3"
+clap = "4.5.58"
 serde = "1.0.219"
 solana-account-decoder = "3.0.0"
 solana-clap-utils = "3.0.0"
