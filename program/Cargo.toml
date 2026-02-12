@@ -50,7 +50,7 @@ bincode = "1.3.1"
 agave-feature-set = "3.1.8"
 assert_matches = "1.5.0"
 proptest = "1.7"
-solana-account = { version = "3.0.0", features = ["bincode"] }
+solana-account = { version = "4.0.0", features = ["bincode"] }
 solana-compute-budget-interface = "3.0.0"
 solana-native-token = "3.0.0"
 solana-program = "3.0.0"
