@@ -7,6 +7,7 @@ use {
         client::*,
         output::{CliStakePool, CliStakePoolDetails, CliStakePoolStakeAccountInfo, CliStakePools},
     },
+    bs58,
     bincode::deserialize,
     clap::{
         crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings,
@@ -73,6 +74,7 @@ pub(crate) struct Config {
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
     no_update: bool,
+    dump_transaction_message_only: bool,
     compute_unit_price: Option<u64>,
     compute_unit_limit: ComputeUnitLimit,
 }
@@ -197,6 +199,67 @@ fn get_signer(
     })
 }
 
+// Dummy signer that only provides a pubkey for serialization mode
+struct DummySigner {
+    pubkey: Pubkey,
+}
+
+impl Signer for DummySigner {
+    fn pubkey(&self) -> Pubkey {
+        self.pubkey
+    }
+
+    fn try_pubkey(&self) -> Result<Pubkey, solana_sdk::signer::SignerError> {
+        Ok(self.pubkey)
+    }
+
+    fn sign_message(&self, _message: &[u8]) -> solana_sdk::signature::Signature {
+        // This should never be called in dump mode since we don't actually sign
+        panic!("DummySigner cannot sign - should only be used with --dump-transaction-message-only")
+    }
+
+    fn try_sign_message(
+        &self,
+        _message: &[u8],
+    ) -> Result<solana_sdk::signature::Signature, solana_sdk::signer::SignerError> {
+        Err(solana_sdk::signer::SignerError::Custom("DummySigner cannot sign - should only be used with --dump-transaction-message-only".to_string()))
+    }
+
+    fn is_interactive(&self) -> bool {
+        false
+    }
+}
+
+fn get_signer_or_pubkey(
+    matches: &ArgMatches<'_>,
+    keypair_name: &str,
+    keypair_path: &str,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
+    signer_from_path_config: SignerFromPathConfig,
+    dump_mode: bool,
+) -> Box<dyn Signer> {
+    if dump_mode {
+        // In dump mode, try to get a pubkey first, then fall back to keypair
+        if let Some(pubkey_str) = matches.value_of(keypair_name) {
+            if let Ok(pubkey) = pubkey_str.parse::<Pubkey>() {
+                return Box::new(DummySigner { pubkey });
+            }
+        }
+    }
+    
+    // Normal mode or couldn't parse as pubkey - get the full signer
+    get_signer(matches, keypair_name, keypair_path, wallet_manager, signer_from_path_config)
+}
+
+fn is_valid_signer_or_pubkey(string: String) -> Result<(), String> {
+    // Try parsing as pubkey first
+    if string.parse::<Pubkey>().is_ok() {
+        return Ok(());
+    }
+    // Fall back to signer validation
+    is_valid_signer(string)
+}
+
 fn get_latest_blockhash(client: &RpcClient) -> Result<Hash, Error> {
     Ok(client
         .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())?
@@ -208,7 +271,10 @@ fn send_transaction_no_wait(
     config: &Config,
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
-    if config.dry_run {
+    if config.dump_transaction_message_only {
+        let encoded = bs58::encode(transaction.message_data()).into_string();
+        println!("{}", encoded);
+    } else if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
     } else {
@@ -223,7 +289,10 @@ fn send_transaction(
     config: &Config,
     transaction: Transaction,
 ) -> solana_client::client_error::Result<()> {
-    if config.dry_run {
+    if config.dump_transaction_message_only {
+        let encoded = bs58::encode(transaction.message_data()).into_string();
+        println!("{}", encoded);
+    } else if config.dry_run {
         let result = config.rpc_client.simulate_transaction(&transaction)?;
         println!("Simulate result: {:?}", result);
     } else {
@@ -241,6 +310,7 @@ fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
     signers: &T,
     additional_fee: u64,
 ) -> Result<Transaction, Error> {
+
     let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
     let mut instructions = instructions.to_vec();
     if let Some(compute_unit_price) = config.compute_unit_price {
@@ -273,7 +343,16 @@ fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
         config,
         additional_fee.saturating_add(config.rpc_client.get_fee_for_message(&message)?),
     )?;
-    let transaction = Transaction::new(signers, message, recent_blockhash);
+    let transaction = if config.dump_transaction_message_only {
+
+        // We are dumping the serialized transaction, assume we do not have access to a signing key
+        // and will be signed later
+        let mut transaction = Transaction::new_unsigned(message);
+        transaction.signatures = vec![solana_sdk::signature::Signature::default(); signers.pubkeys().len()];
+        transaction
+    } else {
+        Transaction::new(signers, message, recent_blockhash)
+    };
     Ok(transaction)
 }
 
@@ -2300,6 +2379,13 @@ fn main() {
                 .help("Simulate transaction instead of executing"),
         )
         .arg(
+            Arg::with_name("dump_transaction_message_only")
+                .long("dump-transaction-message-only")
+                .takes_value(false)
+                .global(true)
+                .help("Output base58-encoded transaction message instead of executing"),
+        )
+        .arg(
             Arg::with_name("no_update")
                 .long("no-update")
                 .takes_value(false)
@@ -2319,46 +2405,46 @@ fn main() {
             Arg::with_name("staker")
                 .long("staker")
                 .value_name("KEYPAIR")
-                .validator(is_valid_signer)
+                .validator(is_valid_signer_or_pubkey)
                 .takes_value(true)
                 .global(true)
-                .help("Stake pool staker. [default: cli config keypair]"),
+                .help("Stake pool staker. Can be a keypair file or pubkey (when using --dump-transaction-message-only). [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("manager")
                 .long("manager")
                 .value_name("KEYPAIR")
-                .validator(is_valid_signer)
+                .validator(is_valid_signer_or_pubkey)
                 .takes_value(true)
                 .global(true)
-                .help("Stake pool manager. [default: cli config keypair]"),
+                .help("Stake pool manager. Can be a keypair file or pubkey (when using --dump-transaction-message-only). [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("funding_authority")
                 .long("funding-authority")
                 .value_name("KEYPAIR")
-                .validator(is_valid_signer)
+                .validator(is_valid_signer_or_pubkey)
                 .takes_value(true)
                 .global(true)
-                .help("Stake pool funding authority for deposits or withdrawals. [default: cli config keypair]"),
+                .help("Stake pool funding authority for deposits or withdrawals. Can be a keypair file or pubkey (when using --dump-transaction-message-only). [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("token_owner")
                 .long("token-owner")
                 .value_name("KEYPAIR")
-                .validator(is_valid_signer)
+                .validator(is_valid_signer_or_pubkey)
                 .takes_value(true)
                 .global(true)
-                .help("Owner of pool token account [default: cli config keypair]"),
+                .help("Owner of pool token account. Can be a keypair file or pubkey (when using --dump-transaction-message-only). [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("fee_payer")
                 .long("fee-payer")
                 .value_name("KEYPAIR")
-                .validator(is_valid_signer)
+                .validator(is_valid_signer_or_pubkey)
                 .takes_value(true)
                 .global(true)
-                .help("Transaction fee payer account [default: cli config keypair]"),
+                .help("Transaction fee payer account. Can be a keypair file or pubkey (when using --dump-transaction-message-only). [default: cli config keypair]"),
         )
         .arg(compute_unit_price_arg().validator(is_parsable::<u64>).global(true))
         .arg(
@@ -3173,8 +3259,9 @@ fn main() {
     let config = {
         let json_rpc_url = value_t!(matches, "json_rpc_url", String)
             .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
+        let dump_transaction_message_only = matches.is_present("dump_transaction_message_only");
 
-        let staker = get_signer(
+        let staker = get_signer_or_pubkey(
             &matches,
             "staker",
             &cli_config.keypair_path,
@@ -3182,10 +3269,11 @@ fn main() {
             SignerFromPathConfig {
                 allow_null_signer: false,
             },
+            dump_transaction_message_only,
         );
 
         let funding_authority = if matches.is_present("funding_authority") {
-            Some(get_signer(
+            Some(get_signer_or_pubkey(
                 &matches,
                 "funding_authority",
                 &cli_config.keypair_path,
@@ -3193,11 +3281,12 @@ fn main() {
                 SignerFromPathConfig {
                     allow_null_signer: false,
                 },
+                dump_transaction_message_only,
             ))
         } else {
             None
         };
-        let manager = get_signer(
+        let manager = get_signer_or_pubkey(
             &matches,
             "manager",
             &cli_config.keypair_path,
@@ -3205,8 +3294,9 @@ fn main() {
             SignerFromPathConfig {
                 allow_null_signer: false,
             },
+            dump_transaction_message_only,
         );
-        let token_owner = get_signer(
+        let token_owner = get_signer_or_pubkey(
             &matches,
             "token_owner",
             &cli_config.keypair_path,
@@ -3214,8 +3304,9 @@ fn main() {
             SignerFromPathConfig {
                 allow_null_signer: false,
             },
+            dump_transaction_message_only,
         );
-        let fee_payer = get_signer(
+        let fee_payer = get_signer_or_pubkey(
             &matches,
             "fee_payer",
             &cli_config.keypair_path,
@@ -3223,6 +3314,7 @@ fn main() {
             SignerFromPathConfig {
                 allow_null_signer: false,
             },
+            dump_transaction_message_only,
         );
         let verbose = matches.is_present("verbose");
         let stake_pool_program_id = pubkey_of(&matches, "program_id")
@@ -3268,6 +3360,7 @@ fn main() {
             fee_payer,
             dry_run,
             no_update,
+            dump_transaction_message_only,
             compute_unit_price,
             compute_unit_limit,
         }
