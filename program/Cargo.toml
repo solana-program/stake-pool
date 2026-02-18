@@ -53,7 +53,7 @@ proptest = "1.10"
 solana-account = { version = "3.0.0", features = ["bincode"] }
 solana-compute-budget-interface = "3.0.0"
 solana-native-token = "3.0.0"
-solana-program = "3.0.0"
+solana-program = "4.0.0"
 solana-program-test = { version = "3.1.8", features = ["agave-unstable-api"] }
 solana-sdk = "3.0.0"
 solana-vote-interface = { version = "5.1.0", features = ["bincode"] }
