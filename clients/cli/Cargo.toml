@@ -17,7 +17,7 @@ solana-cli-config = "3.0.0"
 solana-cli-output = { version = "3.0.0", features = ["agave-unstable-api"] }
 solana-client = "3.0.0"
 solana-compute-budget-interface = "3.0.0"
-solana-commitment-config = "3.0.0"
+solana-commitment-config = "3.1.1"
 solana-logger = "3.0.0"
 solana-message = "3.0.0"
 solana-program = "4.0.0"
