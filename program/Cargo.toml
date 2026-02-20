@@ -26,7 +26,7 @@ solana-clock = "3.0.0"
 solana-cpi = "3.0.0"
 solana-epoch-rewards = "3.0.1"
 solana-instruction = { version = "3.2.0", features = ["std"] }
-solana-msg = "3.0.0"
+solana-msg = "3.1.0"
 solana-program-entrypoint = "3.0.0"
 solana-program-error = "3.0.0"
 solana-program-memory = "3.0.0"
