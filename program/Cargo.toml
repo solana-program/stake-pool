@@ -22,7 +22,7 @@ serde = "1.0.219"
 serde_derive = "1.0.103"
 solana-account-info = "3.0.0"
 solana-borsh = "3.0.0"
-solana-clock = "3.0.0"
+solana-clock = "3.0.1"
 solana-cpi = "3.0.0"
 solana-epoch-rewards = "3.0.1"
 solana-instruction = { version = "3.2.0", features = ["std"] }
