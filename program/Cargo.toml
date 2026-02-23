@@ -38,7 +38,7 @@ solana-security-txt = "1.1.2"
 solana-stake-interface = { version = "2.0.0", features = ["bincode", "borsh"] }
 solana-sysvar-id = "3.0.0"
 solana-sysvar = { version = "4.0.0", features = ["bincode"] }
-solana-system-interface = { version = "3.0.0", features = ["bincode"] }
+solana-system-interface = { version = "3.1.0", features = ["bincode"] }
 spl-pod = { version = "0.7.1", features = [
   "borsh",
 ] }
