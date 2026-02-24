@@ -7910,25 +7910,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-pod"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d01b7d2f9167ed4c1ecafd99fdc3ced71bd30f8b8567d707ec0266313fc3019f"
-dependencies = [
- "borsh",
- "bytemuck",
- "bytemuck_derive",
- "num-derive",
- "num-traits",
- "num_enum",
- "solana-program-error",
- "solana-program-option",
- "solana-pubkey 3.0.0",
- "solana-zk-sdk",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "spl-stake-pool"
 version = "2.0.3"
 dependencies = [
@@ -7970,7 +7951,7 @@ dependencies = [
  "solana-sysvar 4.0.0",
  "solana-sysvar-id",
  "solana-vote-interface 5.1.1",
- "spl-pod 0.8.0",
+ "spl-pod",
  "spl-token-2022-interface",
  "spl-token-interface",
  "test-case",
@@ -8052,7 +8033,7 @@ dependencies = [
  "solana-pubkey 3.0.0",
  "solana-sdk-ids",
  "solana-zk-sdk",
- "spl-pod 0.7.1",
+ "spl-pod",
  "spl-token-confidential-transfer-proof-extraction",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface",
@@ -8077,7 +8058,7 @@ dependencies = [
  "solana-pubkey 3.0.0",
  "solana-sdk-ids",
  "solana-zk-sdk",
- "spl-pod 0.7.1",
+ "spl-pod",
  "thiserror 2.0.18",
 ]
 
@@ -8106,7 +8087,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey 3.0.0",
  "spl-discriminator",
- "spl-pod 0.7.1",
+ "spl-pod",
  "thiserror 2.0.18",
 ]
 
@@ -8144,7 +8125,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey 3.0.0",
  "spl-discriminator",
- "spl-pod 0.7.1",
+ "spl-pod",
  "spl-type-length-value",
  "thiserror 2.0.18",
 ]
@@ -8163,7 +8144,7 @@ dependencies = [
  "solana-msg",
  "solana-program-error",
  "spl-discriminator",
- "spl-pod 0.7.1",
+ "spl-pod",
  "thiserror 2.0.18",
 ]
 
