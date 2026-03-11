@@ -641,6 +641,7 @@ impl Processor {
         invoke(&ix, &[source, destination])
     }
 
+    // XXX HANA
     /// Processes `Initialize` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_initialize(
@@ -888,6 +889,7 @@ impl Processor {
             .map_err(|e| e.into())
     }
 
+    // XXX HANA
     /// Processes `AddValidatorToPool` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_add_validator_to_pool(
@@ -1178,6 +1180,7 @@ impl Processor {
         Ok(())
     }
 
+    // XXX HANA
     /// Processes `DecreaseValidatorStake` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_decrease_validator_stake(
@@ -1867,6 +1870,8 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
         let validator_stake_accounts = account_info_iter.as_slice();
 
+        let rent = Rent::get()?;
+
         check_account_owner(stake_pool_info, program_id)?;
         let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
@@ -1944,6 +1949,8 @@ impl Processor {
             {
                 continue;
             };
+
+            let validator_stake_rent = rent.minimum_balance(validator_stake_info.data_len());
 
             let mut active_stake_lamports = 0;
             let mut transient_stake_lamports = 0;
@@ -2079,7 +2086,7 @@ impl Processor {
                     let additional_lamports = validator_stake_info
                         .lamports()
                         .saturating_sub(stake.delegation.stake)
-                        .saturating_sub(meta.rent_exempt_reserve);
+                        .saturating_sub(validator_stake_rent);
                     // withdraw any extra lamports back to the reserve
                     if additional_lamports > 0 {
                         Self::stake_withdraw(
@@ -2168,6 +2175,7 @@ impl Processor {
         Ok(())
     }
 
+    // XXX HANA
     /// Processes `UpdateStakePoolBalance` instruction.
     #[inline(always)] // needed to optimize number of validators
     fn process_update_stake_pool_balance(
@@ -2797,6 +2805,7 @@ impl Processor {
         Ok(())
     }
 
+    // XXX HANA
     /// Processes [`WithdrawStake`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_stake(
@@ -3144,6 +3153,7 @@ impl Processor {
         Ok(())
     }
 
+    // XXX HANA
     /// Processes [`WithdrawSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_sol(
