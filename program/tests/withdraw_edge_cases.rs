@@ -3,7 +3,6 @@
 mod helpers;
 
 use {
-    bincode::deserialize,
     helpers::*,
     solana_program::{
         borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
@@ -714,11 +713,8 @@ async fn success_with_reserve() {
         &stake_pool_accounts.reserve_stake.pubkey(),
     )
     .await;
-    let stake_state =
-        deserialize::<stake::state::StakeStateV2>(&reserve_stake_account.data).unwrap();
-    let meta = stake_state.meta().unwrap();
     assert_eq!(
-        meta.rent_exempt_reserve + withdrawal_fee + deposit_fee + stake_rent,
+        STAKE_ACCOUNT_RENT_EXEMPTION + withdrawal_fee + deposit_fee + stake_rent,
         reserve_stake_account.lamports
     );
 

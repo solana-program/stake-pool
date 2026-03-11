@@ -12,10 +12,7 @@ pub mod state;
 #[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
 
-use {
-    crate::state::Fee, solana_pubkey::Pubkey, solana_stake_interface::state::Meta,
-    std::num::NonZeroU32,
-};
+use {crate::state::Fee, solana_pubkey::Pubkey, std::num::NonZeroU32};
 
 /// Seed for deposit authority seed
 const AUTHORITY_DEPOSIT: &[u8] = b"deposit";
@@ -64,9 +61,11 @@ pub const MAX_VALIDATORS_IN_POOL: u32 = 20_000;
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
 #[inline]
-pub fn minimum_stake_lamports(meta: &Meta, stake_program_minimum_delegation: u64) -> u64 {
-    meta.rent_exempt_reserve
-        .saturating_add(minimum_delegation(stake_program_minimum_delegation))
+pub fn minimum_stake_lamports(
+    rent_exempt_reserve: u64,
+    stake_program_minimum_delegation: u64,
+) -> u64 {
+    rent_exempt_reserve.saturating_add(minimum_delegation(stake_program_minimum_delegation))
 }
 
 /// Get the minimum delegation required by a stake account in a stake pool
@@ -78,9 +77,8 @@ pub fn minimum_delegation(stake_program_minimum_delegation: u64) -> u64 {
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
 #[inline]
-pub fn minimum_reserve_lamports(meta: &Meta) -> u64 {
-    meta.rent_exempt_reserve
-        .saturating_add(MINIMUM_RESERVE_LAMPORTS)
+pub fn minimum_reserve_lamports(rent_exempt_reserve: u64) -> u64 {
+    rent_exempt_reserve.saturating_add(MINIMUM_RESERVE_LAMPORTS)
 }
 
 /// Generates the deposit authority program address for the stake pool

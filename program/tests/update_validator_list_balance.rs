@@ -814,7 +814,7 @@ async fn updates_validator_status_after_cluster_restart_merge() {
 
     // Create an Initialized stake account (as would happen during cluster restart)
     let initialized_meta = solana_stake_interface::state::Meta {
-        rent_exempt_reserve: 2282880, // Standard rent exemption
+        rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: solana_stake_interface::state::Authorized {
             staker: stake_pool_accounts.withdraw_authority, // Correct authorities
             withdrawer: stake_pool_accounts.withdraw_authority,
@@ -922,7 +922,7 @@ async fn ignores_unusable_stake_accounts_preventing_exploit() {
         .await;
 
     let malicious_meta = solana_stake_interface::state::Meta {
-        rent_exempt_reserve: 2282880,
+        rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: solana_stake_interface::state::Authorized {
             staker: malicious_authority.pubkey(), // WRONG - should be pool's withdraw authority
             withdrawer: malicious_authority.pubkey(), // WRONG - should be pool's withdraw authority
