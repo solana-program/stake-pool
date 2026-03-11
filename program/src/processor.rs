@@ -641,7 +641,6 @@ impl Processor {
         invoke(&ix, &[source, destination])
     }
 
-    // XXX HANA
     /// Processes `Initialize` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_initialize(
@@ -803,6 +802,7 @@ impl Processor {
             msg!("Reserve stake account not owned by stake program");
             return Err(ProgramError::IncorrectProgramId);
         }
+        let reserve_rent = rent.minimum_balance(reserve_stake_info.data_len());
         let stake_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
             &reserve_stake_info.data.borrow(),
         )?;
@@ -831,7 +831,7 @@ impl Processor {
             }
             reserve_stake_info
                 .lamports()
-                .checked_sub(minimum_reserve_lamports(&meta))
+                .checked_sub(minimum_reserve_lamports(reserve_rent))
                 .ok_or(StakePoolError::CalculationFailure)?
         } else {
             msg!("Reserve stake account not in intialized state");
@@ -889,7 +889,6 @@ impl Processor {
             .map_err(|e| e.into())
     }
 
-    // XXX HANA
     /// Processes `AddValidatorToPool` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_add_validator_to_pool(
@@ -986,13 +985,8 @@ impl Processor {
             .saturating_add(rent.minimum_balance(stake_space));
 
         // Check that we're not draining the reserve totally
-        let reserve_stake = try_from_slice_unchecked::<stake::state::StakeStateV2>(
-            &reserve_stake_info.data.borrow(),
-        )?;
-        let reserve_meta = reserve_stake
-            .meta()
-            .ok_or(StakePoolError::WrongStakeStake)?;
-        let minimum_lamports = minimum_reserve_lamports(&reserve_meta);
+        let reserve_rent = rent.minimum_balance(reserve_stake_info.data_len());
+        let minimum_lamports = minimum_reserve_lamports(reserve_rent);
         let reserve_lamports = reserve_stake_info.lamports();
         if reserve_lamports.saturating_sub(required_lamports) < minimum_lamports {
             msg!(
@@ -1180,7 +1174,6 @@ impl Processor {
         Ok(())
     }
 
-    // XXX HANA
     /// Processes `DecreaseValidatorStake` instruction.
     #[inline(never)] // needed due to stack size violation
     fn process_decrease_validator_stake(
@@ -1251,7 +1244,8 @@ impl Processor {
             stake_pool.check_reserve_stake(reserve_stake_info)?;
         }
 
-        let (meta, stake) = get_stake_state(validator_stake_account_info)?;
+        let validator_stake_rent = rent.minimum_balance(validator_stake_account_info.data_len());
+        let (_, stake) = get_stake_state(validator_stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
 
         let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo, _>(|x| {
@@ -1314,7 +1308,8 @@ impl Processor {
             .lamports()
             .checked_sub(lamports)
             .ok_or(ProgramError::InsufficientFunds)?;
-        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
+        let required_lamports =
+            minimum_stake_lamports(validator_stake_rent, stake_minimum_delegation);
         if remaining_lamports < required_lamports {
             msg!("Need at least {} lamports in the stake account after decrease, {} requested, {} is the current possible maximum",
                 required_lamports,
@@ -2175,7 +2170,6 @@ impl Processor {
         Ok(())
     }
 
-    // XXX HANA
     /// Processes `UpdateStakePoolBalance` instruction.
     #[inline(always)] // needed to optimize number of validators
     fn process_update_stake_pool_balance(
@@ -2191,6 +2185,7 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let clock = Clock::get()?;
+        let rent = Rent::get()?;
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2221,19 +2216,19 @@ impl Processor {
 
         let previous_lamports = stake_pool.total_lamports;
         let previous_pool_token_supply = stake_pool.pool_token_supply;
+        let reserve_rent = rent.minimum_balance(reserve_stake_info.data_len());
         let reserve_stake = try_from_slice_unchecked::<stake::state::StakeStateV2>(
             &reserve_stake_info.data.borrow(),
         )?;
-        let mut total_lamports =
-            if let stake::state::StakeStateV2::Initialized(meta) = reserve_stake {
-                reserve_stake_info
-                    .lamports()
-                    .checked_sub(minimum_reserve_lamports(&meta))
-                    .ok_or(StakePoolError::CalculationFailure)?
-            } else {
-                msg!("Reserve stake account in unknown state, aborting");
-                return Err(StakePoolError::WrongStakeStake.into());
-            };
+        let mut total_lamports = if let stake::state::StakeStateV2::Initialized(_) = reserve_stake {
+            reserve_stake_info
+                .lamports()
+                .checked_sub(minimum_reserve_lamports(reserve_rent))
+                .ok_or(StakePoolError::CalculationFailure)?
+        } else {
+            msg!("Reserve stake account in unknown state, aborting");
+            return Err(StakePoolError::WrongStakeStake.into());
+        };
         for validator_stake_record in validator_list
             .deserialize_slice::<ValidatorStakeInfo>(0, validator_list.len() as usize)?
         {
@@ -2805,7 +2800,6 @@ impl Processor {
         Ok(())
     }
 
-    // XXX HANA
     /// Processes [`WithdrawStake`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_stake(
@@ -2829,6 +2823,8 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
+
+        let rent = Rent::get()?;
 
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
@@ -2894,12 +2890,12 @@ impl Processor {
             }
         }
 
+        let split_from_rent = rent.minimum_balance(stake_split_from.data_len());
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let stake_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
             &stake_split_from.data.borrow(),
         )?;
-        let meta = stake_state.meta().ok_or(StakePoolError::WrongStakeStake)?;
-        let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
+        let required_lamports = minimum_stake_lamports(split_from_rent, stake_minimum_delegation);
 
         let lamports_per_pool_token = stake_pool
             .get_lamports_per_pool_token()
@@ -2932,7 +2928,7 @@ impl Processor {
             }
 
             // check that reserve has enough
-            let minimum_reserve_lamports = minimum_reserve_lamports(&meta);
+            let minimum_reserve_lamports = minimum_reserve_lamports(split_from_rent);
             if stake_split_from
                 .lamports()
                 .saturating_sub(withdraw_lamports)
@@ -3153,7 +3149,6 @@ impl Processor {
         Ok(())
     }
 
-    // XXX HANA
     /// Processes [`WithdrawSol`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_sol(
@@ -3176,6 +3171,8 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let sol_withdraw_authority_info = next_account_info(account_info_iter);
+
+        let rent = Rent::get()?;
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -3237,14 +3234,15 @@ impl Processor {
             }
         }
 
+        let reserve_rent = rent.minimum_balance(reserve_stake_info.data_len());
         let new_reserve_lamports = reserve_stake_info
             .lamports()
             .saturating_sub(withdraw_lamports);
         let stake_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
             &reserve_stake_info.data.borrow(),
         )?;
-        if let stake::state::StakeStateV2::Initialized(meta) = stake_state {
-            let minimum_reserve_lamports = minimum_reserve_lamports(&meta);
+        if let stake::state::StakeStateV2::Initialized(_) = stake_state {
+            let minimum_reserve_lamports = minimum_reserve_lamports(reserve_rent);
             if new_reserve_lamports < minimum_reserve_lamports {
                 msg!("Attempting to withdraw {} lamports, maximum possible SOL withdrawal is {} lamports",
                     withdraw_lamports,
