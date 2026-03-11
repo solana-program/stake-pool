@@ -2217,18 +2217,12 @@ impl Processor {
         let previous_lamports = stake_pool.total_lamports;
         let previous_pool_token_supply = stake_pool.pool_token_supply;
         let reserve_rent = rent.minimum_balance(reserve_stake_info.data_len());
-        let reserve_stake = try_from_slice_unchecked::<stake::state::StakeStateV2>(
-            &reserve_stake_info.data.borrow(),
-        )?;
-        let mut total_lamports = if let stake::state::StakeStateV2::Initialized(_) = reserve_stake {
-            reserve_stake_info
-                .lamports()
-                .checked_sub(minimum_reserve_lamports(reserve_rent))
-                .ok_or(StakePoolError::CalculationFailure)?
-        } else {
-            msg!("Reserve stake account in unknown state, aborting");
-            return Err(StakePoolError::WrongStakeStake.into());
-        };
+
+        let mut total_lamports = reserve_stake_info
+            .lamports()
+            .checked_sub(minimum_reserve_lamports(reserve_rent))
+            .ok_or(StakePoolError::CalculationFailure)?;
+
         for validator_stake_record in validator_list
             .deserialize_slice::<ValidatorStakeInfo>(0, validator_list.len() as usize)?
         {
@@ -3235,25 +3229,18 @@ impl Processor {
         }
 
         let reserve_rent = rent.minimum_balance(reserve_stake_info.data_len());
+        let minimum_reserve_lamports = minimum_reserve_lamports(reserve_rent);
         let new_reserve_lamports = reserve_stake_info
             .lamports()
             .saturating_sub(withdraw_lamports);
-        let stake_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
-            &reserve_stake_info.data.borrow(),
-        )?;
-        if let stake::state::StakeStateV2::Initialized(_) = stake_state {
-            let minimum_reserve_lamports = minimum_reserve_lamports(reserve_rent);
-            if new_reserve_lamports < minimum_reserve_lamports {
-                msg!("Attempting to withdraw {} lamports, maximum possible SOL withdrawal is {} lamports",
-                    withdraw_lamports,
-                    reserve_stake_info.lamports().saturating_sub(minimum_reserve_lamports)
-                );
-                return Err(StakePoolError::SolWithdrawalTooLarge.into());
-            }
-        } else {
-            msg!("Reserve stake account not in intialized state");
-            return Err(StakePoolError::WrongStakeStake.into());
-        };
+
+        if new_reserve_lamports < minimum_reserve_lamports {
+            msg!("Attempting to withdraw {} lamports, maximum possible SOL withdrawal is {} lamports",
+                withdraw_lamports,
+                reserve_stake_info.lamports().saturating_sub(minimum_reserve_lamports)
+            );
+            return Err(StakePoolError::SolWithdrawalTooLarge.into());
+        }
 
         Self::token_burn(
             token_program_info.clone(),
