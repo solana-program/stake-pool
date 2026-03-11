@@ -714,8 +714,6 @@ async fn success_with_reserve() {
         &stake_pool_accounts.reserve_stake.pubkey(),
     )
     .await;
-    let stake_state =
-        deserialize::<stake::state::StakeStateV2>(&reserve_stake_account.data).unwrap();
     assert_eq!(
         STAKE_ACCOUNT_RENT_EXEMPTION + withdrawal_fee + deposit_fee + stake_rent,
         reserve_stake_account.lamports
