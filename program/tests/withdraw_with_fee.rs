@@ -2,12 +2,10 @@
 mod helpers;
 
 use {
-    bincode::deserialize,
     helpers::*,
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::signature::{Keypair, Signer},
-    solana_stake_interface as stake,
     spl_stake_pool::minimum_stake_lamports,
 };
 
@@ -174,17 +172,14 @@ async fn success_empty_out_stake_with_fee() {
         &withdraw_validator_stake_account.stake_account,
     )
     .await;
-    let stake_state =
-        deserialize::<stake::state::StakeStateV2>(&validator_stake_account.data).unwrap();
-    let meta = stake_state.meta().unwrap();
     let stake_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
         &last_blockhash,
     )
     .await;
-    let lamports_to_withdraw =
-        validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation);
+    let lamports_to_withdraw = validator_stake_account.lamports
+        - minimum_stake_lamports(STAKE_ACCOUNT_RENT_EXEMPTION, stake_minimum_delegation);
     let pool_tokens_to_withdraw =
         stake_pool_accounts.calculate_inverse_withdrawal_fee(lamports_to_withdraw);
 
@@ -215,11 +210,8 @@ async fn success_empty_out_stake_with_fee() {
         &withdraw_validator_stake_account.stake_account,
     )
     .await;
-    let stake_state =
-        deserialize::<stake::state::StakeStateV2>(&validator_stake_account.data).unwrap();
-    let meta = stake_state.meta().unwrap();
     assert_eq!(
         validator_stake_account.lamports,
-        minimum_stake_lamports(&meta, stake_minimum_delegation)
+        minimum_stake_lamports(STAKE_ACCOUNT_RENT_EXEMPTION, stake_minimum_delegation)
     );
 }

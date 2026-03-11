@@ -3,7 +3,6 @@
 mod helpers;
 
 use {
-    bincode::deserialize,
     helpers::*,
     solana_program::{
         borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
