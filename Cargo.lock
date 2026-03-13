@@ -200,7 +200,7 @@ dependencies = [
  "solana-secp256k1-recover",
  "solana-sha256-hasher",
  "solana-stable-layout",
- "solana-stake-interface",
+ "solana-stake-interface 2.0.2",
  "solana-svm-callback",
  "solana-svm-feature-set",
  "solana-svm-log-collector",
@@ -4617,7 +4617,7 @@ dependencies = [
  "solana-sdk-ids",
  "solana-slot-hashes",
  "solana-slot-history",
- "solana-stake-interface",
+ "solana-stake-interface 2.0.2",
  "solana-sysvar 3.1.1",
  "solana-vote-interface 4.0.4",
  "spl-generic-token",
@@ -5097,7 +5097,7 @@ dependencies = [
  "solana-rpc-client-api",
  "solana-sdk-ids",
  "solana-signature",
- "solana-stake-interface",
+ "solana-stake-interface 2.0.2",
  "solana-system-interface 2.0.0",
  "solana-transaction",
  "solana-transaction-error",
@@ -6206,7 +6206,7 @@ dependencies = [
  "solana-sdk-ids",
  "solana-slot-hashes",
  "solana-stable-layout",
- "solana-stake-interface",
+ "solana-stake-interface 2.0.2",
  "solana-svm-callback",
  "solana-svm-feature-set",
  "solana-svm-log-collector",
@@ -6270,7 +6270,7 @@ dependencies = [
  "solana-sdk-ids",
  "solana-signer",
  "solana-stable-layout",
- "solana-stake-interface",
+ "solana-stake-interface 2.0.2",
  "solana-svm",
  "solana-svm-log-collector",
  "solana-svm-timings",
@@ -6654,7 +6654,7 @@ dependencies = [
  "solana-signer",
  "solana-slot-hashes",
  "solana-slot-history",
- "solana-stake-interface",
+ "solana-stake-interface 2.0.2",
  "solana-svm",
  "solana-svm-callback",
  "solana-svm-timings",
@@ -7009,7 +7009,6 @@ version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9bc26191b533f9a6e5a14cca05174119819ced680a80febff2f5051a713f0db"
 dependencies = [
- "borsh",
  "num-traits",
  "serde",
  "serde_derive",
@@ -7021,6 +7020,25 @@ dependencies = [
  "solana-system-interface 2.0.0",
  "solana-sysvar 3.1.1",
  "solana-sysvar-id",
+]
+
+[[package]]
+name = "solana-stake-interface"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd714713337a7f5b513e02119f484fb9b7e056c6ce74af30e70505f2e62b64b7"
+dependencies = [
+ "borsh",
+ "num-traits",
+ "serde",
+ "serde_derive",
+ "solana-clock",
+ "solana-cpi",
+ "solana-instruction",
+ "solana-program-error",
+ "solana-pubkey 4.1.0",
+ "solana-system-interface 3.1.0",
+ "solana-sysvar 4.0.0",
 ]
 
 [[package]]
@@ -7505,7 +7523,7 @@ dependencies = [
  "solana-reward-info",
  "solana-sdk-ids",
  "solana-signature",
- "solana-stake-interface",
+ "solana-stake-interface 2.0.2",
  "solana-system-interface 2.0.0",
  "solana-transaction",
  "solana-transaction-error",
@@ -7946,7 +7964,7 @@ dependencies = [
  "solana-sdk",
  "solana-sdk-ids",
  "solana-security-txt",
- "solana-stake-interface",
+ "solana-stake-interface 3.0.0",
  "solana-system-interface 3.1.0",
  "solana-sysvar 4.0.0",
  "solana-sysvar-id",
@@ -7977,7 +7995,7 @@ dependencies = [
  "solana-program 4.0.0",
  "solana-remote-wallet",
  "solana-sdk",
- "solana-stake-interface",
+ "solana-stake-interface 3.0.0",
  "solana-system-interface 3.1.0",
  "spl-associated-token-account-interface",
  "spl-stake-pool",
