@@ -13,7 +13,7 @@ no-entrypoint = []
 
 [dependencies]
 arrayref = "0.3.9"
-borsh = "1.6.0"
+borsh = "1.6.1"
 bytemuck = "1.25"
 num-derive = "0.4"
 num-traits = "0.2"
