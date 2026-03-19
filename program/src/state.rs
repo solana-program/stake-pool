@@ -292,7 +292,7 @@ impl StakePool {
 
     /// Check if the manager fee info is a valid token program account
     /// capable of receiving tokens from the mint.
-    pub(crate) fn check_manager_fee_info(
+    pub fn check_manager_fee_info(
         &self,
         manager_fee_info: &AccountInfo,
     ) -> Result<(), ProgramError> {
