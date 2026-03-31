@@ -2361,10 +2361,10 @@ fn main() {
                 .help("Transaction fee payer account [defaults: cli config keypair]"),
         )
         .arg(
-            Arg::with_name("keypair_path")
-                .long("keypair-path")
+            Arg::with_name("keypair")
+                .long("keypair")
                 .short("k")
-                .value_name("PATH")
+                .value_name("KEYPAIR")
                 .validator(is_keypair_or_ask_keyword)
                 .takes_value(true)
                 .global(true)
@@ -3182,7 +3182,7 @@ fn main() {
     };
 
     let default_keypair_path = matches
-        .value_of("keypair_path")
+        .value_of("keypair")
         .unwrap_or(&cli_config.keypair_path);
 
     let config = {
