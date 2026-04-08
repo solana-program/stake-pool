@@ -746,6 +746,23 @@ pub enum StakePoolInstruction {
         /// Maximum stake per validator, or None to remove the limit
         max_stake: Option<u64>,
     },
+
+    /// (Manager only) Reallocate the validator list account to increase
+    /// max_validators.
+    ///
+    /// Grows the validator list account and updates `max_validators` in the
+    /// header. The new max is derived from the new account size. The payer
+    /// funds the additional rent-exempt lamports.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[s]` Manager
+    ///   2. `[w]` Validator list account (must match stake pool's validator_list)
+    ///   3. `[w, s]` Payer for additional rent
+    ///   4. `[]` System program
+    ReallocValidatorList {
+        /// New maximum number of validators
+        new_max_validators: u32,
+    },
 }
 
 /// Creates an `Initialize` instruction.
@@ -2671,5 +2688,29 @@ pub fn set_max_validator_stake(
         program_id: *program_id,
         accounts,
         data: borsh::to_vec(&StakePoolInstruction::SetMaxValidatorStake { max_stake }).unwrap(),
+    }
+}
+
+/// Creates a `ReallocValidatorList` instruction.
+pub fn realloc_validator_list(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    validator_list: &Pubkey,
+    payer: &Pubkey,
+    new_max_validators: u32,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&StakePoolInstruction::ReallocValidatorList { new_max_validators })
+            .unwrap(),
     }
 }

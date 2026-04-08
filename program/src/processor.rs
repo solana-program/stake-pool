@@ -42,6 +42,7 @@ use {
         native_mint,
         state::Mint,
     },
+    solana_program::program_pack::Pack,
     std::num::NonZeroU32,
 };
 
@@ -3420,6 +3421,109 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [`ReallocValidatorList`](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
+    fn process_realloc_validator_list(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        new_max_validators: u32,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+        let validator_list_info = next_account_info(account_info_iter)?;
+        let payer_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+
+        // Validate stake pool
+        check_account_owner(stake_pool_info, program_id)?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+        stake_pool.check_manager(manager_info)?;
+        stake_pool.check_validator_list(validator_list_info)?;
+
+        // Validate validator list
+        check_account_owner(validator_list_info, program_id)?;
+        let validator_list_data = validator_list_info.data.borrow();
+        let header = ValidatorListHeader::deserialize(&mut &validator_list_data[..])?;
+        if !header.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        // new_max must be greater than current max
+        if new_max_validators <= header.max_validators {
+            msg!(
+                "New max validators {} must be greater than current max {}",
+                new_max_validators,
+                header.max_validators
+            );
+            return Err(ProgramError::InvalidArgument);
+        }
+        drop(validator_list_data);
+
+        // Verify payer is a signer
+        if !payer_info.is_signer {
+            return Err(StakePoolError::SignatureMissing.into());
+        }
+
+        // Verify system program
+        if *system_program_info.key != system_program::id() {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        // Calculate new size
+        let header_size =
+            std::mem::size_of::<ValidatorListHeader>().saturating_add(4);
+        let new_size = header_size
+            .saturating_add((new_max_validators as usize).saturating_mul(ValidatorStakeInfo::LEN));
+
+        // Verify the new size is consistent
+        let calculated_max = ValidatorList::calculate_max_validators(new_size);
+        if calculated_max != new_max_validators as usize {
+            msg!(
+                "Calculated max validators {} does not match requested {}",
+                calculated_max,
+                new_max_validators
+            );
+            return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
+        }
+
+        // Calculate additional rent needed
+        let rent = Rent::get()?;
+        let new_rent_minimum = rent.minimum_balance(new_size);
+        let current_lamports = validator_list_info.lamports();
+        let lamports_needed = new_rent_minimum.saturating_sub(current_lamports);
+
+        // Transfer additional rent from payer if needed
+        if lamports_needed > 0 {
+            invoke(
+                &system_instruction::transfer(
+                    payer_info.key,
+                    validator_list_info.key,
+                    lamports_needed,
+                ),
+                &[
+                    payer_info.clone(),
+                    validator_list_info.clone(),
+                    system_program_info.clone(),
+                ],
+            )?;
+        }
+
+        // Realloc the account
+        validator_list_info.realloc(new_size, false)?;
+
+        // Update max_validators in the header
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let mut header = ValidatorListHeader::deserialize(&mut &validator_list_data[..])?;
+        header.max_validators = new_max_validators;
+        borsh::to_writer(&mut validator_list_data[..], &header)?;
+
+        Ok(())
+    }
+
     /// Processes [`SetStaker`](enum.Instruction.html).
     #[inline(never)] // needed to avoid stack size violation
     fn process_set_staker(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
@@ -3701,6 +3805,10 @@ impl Processor {
             StakePoolInstruction::SetMaxValidatorStake { max_stake } => {
                 msg!("Instruction: SetMaxValidatorStake");
                 Self::process_set_max_validator_stake(program_id, accounts, max_stake)
+            }
+            StakePoolInstruction::ReallocValidatorList { new_max_validators } => {
+                msg!("Instruction: ReallocValidatorList");
+                Self::process_realloc_validator_list(program_id, accounts, new_max_validators)
             }
         }
     }
