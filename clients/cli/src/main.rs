@@ -2248,6 +2248,30 @@ fn command_set_max_validator_stake(
     Ok(())
 }
 
+fn command_realloc_validator_list(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    new_max_validators: u32,
+) -> CommandResult {
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(
+        config,
+        &[spl_stake_pool::instruction::realloc_validator_list(
+            &config.stake_pool_program_id,
+            stake_pool_address,
+            &config.manager.pubkey(),
+            &stake_pool.validator_list,
+            &config.fee_payer.pubkey(),
+            new_max_validators,
+        )],
+        &signers,
+    )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
 fn command_list_all_pools(config: &Config) -> CommandResult {
     let all_pools = get_stake_pools(&config.rpc_client, &config.stake_pool_program_id)?;
     let cli_stake_pool_vec: Vec<CliStakePool> =
@@ -3179,6 +3203,26 @@ fn main() {
                     .help("Maximum stake per validator in SOL, or 'none' to remove the limit"),
             )
         )
+        .subcommand(SubCommand::with_name("realloc-validator-list")
+            .about("Increase the maximum number of validators in the pool. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("new_max_validators")
+                    .index(2)
+                    .value_name("NEW_MAX_VALIDATORS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("New maximum number of validators (must be greater than current max)"),
+            )
+        )
         .subcommand(SubCommand::with_name("list-all")
             .about("List information about all stake pools")
         )
@@ -3578,6 +3622,11 @@ fn main() {
                 }
             };
             command_set_max_validator_stake(&config, &stake_pool_address, max_stake)
+        }
+        ("realloc-validator-list", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let new_max_validators = value_t_or_exit!(arg_matches, "new_max_validators", u32);
+            command_realloc_validator_list(&config, &stake_pool_address, new_max_validators)
         }
         ("list-all", _) => command_list_all_pools(&config),
         ("deposit-all-stake", Some(arg_matches)) => {
