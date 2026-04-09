@@ -40,7 +40,8 @@ export type StakePoolInstructionType =
   | 'Redelegate'
   | 'AddValidatorToPool'
   | 'RemoveValidatorFromPool'
-  | 'SetMaxValidatorStake';
+  | 'SetMaxValidatorStake'
+  | 'ReallocValidatorList';
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
@@ -186,6 +187,13 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
       BufferLayout.u8('instruction'),
       BufferLayout.u8('maxStakeOption'),
       BufferLayout.ns64('maxStake'),
+    ]),
+  },
+  ReallocValidatorList: {
+    index: 28,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.u32('newMaxValidators'),
     ]),
   },
 });
@@ -401,6 +409,15 @@ export type SetMaxValidatorStakeParams = {
   maxStake?: BN | undefined;
 };
 
+export type ReallocValidatorListParams = {
+  programId?: PublicKey | undefined;
+  stakePool: PublicKey;
+  manager: PublicKey;
+  validatorList: PublicKey;
+  payer: PublicKey;
+  newMaxValidators: number;
+};
+
 /**
  * Stake Pool Instruction class
  */
@@ -500,6 +517,30 @@ export class StakePoolInstruction {
     const keys = [
       { pubkey: stakePool, isSigner: false, isWritable: true },
       { pubkey: manager, isSigner: true, isWritable: false },
+    ];
+
+    return new TransactionInstruction({
+      programId: programId ?? STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
+  /**
+   * Creates instruction to reallocate the validator list account to support more validators.
+   */
+  static reallocValidatorList(params: ReallocValidatorListParams): TransactionInstruction {
+    const { programId, stakePool, manager, validatorList, payer, newMaxValidators } = params;
+
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.ReallocValidatorList;
+    const data = encodeData(type, { newMaxValidators });
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: true },
+      { pubkey: manager, isSigner: true, isWritable: false },
+      { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ];
 
     return new TransactionInstruction({
