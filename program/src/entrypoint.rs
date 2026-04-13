@@ -30,13 +30,12 @@ security_txt! {
     // Required fields
     name: "SPL Stake Pool",
     project_url: "https://www.solana-program.com/docs/stake-pool",
-    contacts: "link:https://github.com/solana-program/stake-pool/security/advisories/new,mailto:security@anza.xyz,discord:https://solana.com/discord",
+    contacts: "link:https://github.com/solana-program/stake-pool/security/advisories/new,email:security@anza.xyz,discord:https://solana.com/discord",
     policy: "https://github.com/solana-program/stake-pool/blob/master/SECURITY.md",
 
     // Optional Fields
     preferred_languages: "en",
     source_code: "https://github.com/solana-program/stake-pool",
-    source_revision: "0e562954cc280185fcc87ef01d7bbc78859fdae9",
-    source_release: "program@v2.0.4",
+    source_release: concat!("program@v", env!("CARGO_PKG_VERSION")),
     auditors: "https://github.com/anza-xyz/security-audits#stake-pool"
 }
