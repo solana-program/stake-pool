@@ -1458,4 +1458,17 @@ mod test {
         let withdraw_result = stake_pool.calc_lamports_withdraw_amount(1).unwrap();
         assert_eq!(stake_pool.total_lamports, withdraw_result);
     }
+
+    #[test]
+    fn update_fee() {
+        let mut pool = StakePool {
+            stake_withdrawal_fee: Fee {
+                denominator: u64::MAX,
+                numerator: 1,
+            },
+            ..Default::default()
+        };
+        let new_fee = FeeType::StakeWithdrawal(Fee { denominator: u64::MAX, numerator: u64::MAX });
+        pool.update_fee(&new_fee).unwrap();
+    }
 }
