@@ -3,7 +3,7 @@
 use {
     crate::{
         big_vec::BigVec, error::StakePoolError, MAX_WITHDRAWAL_FEE_INCREASE,
-        WITHDRAWAL_BASELINE_FEE,
+        MAX_WITHDRAWAL_FEE_INCREASE_FACTOR, WITHDRAWAL_BASELINE_FEE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     bytemuck::{Pod, Zeroable},
@@ -953,7 +953,7 @@ impl Fee {
     /// if those are met, returning an error if not.
     pub fn check_withdrawal(&self, old_withdrawal_fee: &Fee) -> Result<(), StakePoolError> {
         // If the previous withdrawal fee was 0, we allow the fee to be set to a
-        // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
+        // WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE_FACTOR
         let (old_num, old_denom) =
             if old_withdrawal_fee.denominator == 0 || old_withdrawal_fee.numerator == 0 {
                 (
@@ -964,16 +964,42 @@ impl Fee {
                 (old_withdrawal_fee.numerator, old_withdrawal_fee.denominator)
             };
 
-        // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
+        // Check that new_fee - old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
+        // Program fails if provided numerator or denominator is too large, resulting in
+        // overflow
+        if (old_denom as u128)
+            .checked_mul(self.denominator as u128)
+            .and_then(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
+            .ok_or(StakePoolError::CalculationFailure)?
+            < ((self.numerator as u128)
+                .checked_mul(old_denom as u128)
+                .ok_or(StakePoolError::CalculationFailure)?
+                .saturating_sub(
+                    (self.denominator as u128)
+                        .checked_mul(old_num as u128)
+                        .ok_or(StakePoolError::CalculationFailure)?,
+                )
+                .checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128)
+                .ok_or(StakePoolError::CalculationFailure)?)
+        {
+            msg!(
+                "Fee increase exceeds maximum allowed, need to increase by {} / {}",
+                MAX_WITHDRAWAL_FEE_INCREASE.numerator,
+                MAX_WITHDRAWAL_FEE_INCREASE.denominator,
+            );
+            return Err(StakePoolError::FeeIncreaseTooHigh);
+        }
+
+        // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE_FACTOR
         // Program fails if provided numerator or denominator is too large, resulting in
         // overflow
         if (old_num as u128)
             .checked_mul(self.denominator as u128)
-            .and_then(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
+            .and_then(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE_FACTOR.numerator as u128))
             .ok_or(StakePoolError::CalculationFailure)?
             < (self.numerator as u128)
                 .checked_mul(old_denom as u128)
-                .and_then(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
+                .and_then(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE_FACTOR.denominator as u128))
                 .ok_or(StakePoolError::CalculationFailure)?
         {
             msg!(
@@ -1471,6 +1497,22 @@ mod test {
         };
         assert_eq!(
             StakePoolError::CalculationFailure,
+            new_fee.check_withdrawal(&old_fee).unwrap_err()
+        );
+    }
+
+    #[test]
+    fn check_withdrawal_fee_max_increase() {
+        let old_fee = Fee {
+            numerator: 10,
+            denominator: 200,
+        };
+        let new_fee = Fee {
+            numerator: 11_000_000_000_000_001,
+            denominator: 200_000_000_000_000_000,
+        };
+        assert_eq!(
+            StakePoolError::FeeIncreaseTooHigh,
             new_fee.check_withdrawal(&old_fee).unwrap_err()
         );
     }
