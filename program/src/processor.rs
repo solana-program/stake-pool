@@ -2218,10 +2218,11 @@ impl Processor {
         let previous_pool_token_supply = stake_pool.pool_token_supply;
         let reserve_rent = rent.minimum_balance(reserve_stake_info.data_len());
 
+        // Use `saturating_sub` here in case rent goes up and the reserve doesn't
+        // have enough lamports to cover rent.
         let mut total_lamports = reserve_stake_info
             .lamports()
-            .checked_sub(minimum_reserve_lamports(reserve_rent))
-            .ok_or(StakePoolError::CalculationFailure)?;
+            .saturating_sub(minimum_reserve_lamports(reserve_rent));
 
         for validator_stake_record in validator_list
             .deserialize_slice::<ValidatorStakeInfo>(0, validator_list.len() as usize)?
