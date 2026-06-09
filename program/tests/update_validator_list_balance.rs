@@ -813,6 +813,7 @@ async fn updates_validator_status_after_cluster_restart_merge() {
         .await;
 
     // Create an Initialized stake account (as would happen during cluster restart)
+    #[allow(deprecated)]
     let initialized_meta = solana_stake_interface::state::Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: solana_stake_interface::state::Authorized {
@@ -921,6 +922,7 @@ async fn ignores_unusable_stake_accounts_preventing_exploit() {
         .get_stake_pool(&mut context.banks_client)
         .await;
 
+    #[allow(deprecated)]
     let malicious_meta = solana_stake_interface::state::Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: solana_stake_interface::state::Authorized {

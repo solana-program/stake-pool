@@ -7041,6 +7041,7 @@ dependencies = [
  "solana-pubkey 4.2.0",
  "solana-system-interface 3.2.0",
  "solana-sysvar 4.0.0",
+ "solana-sysvar-id",
 ]
 
 [[package]]
