@@ -17,12 +17,12 @@ use {
         account::{Account as SolanaAccount, ReadableAccount},
         clock::{Clock, Epoch},
         signature::{Keypair, Signer},
-        sysvar::SysvarId,
         transaction::Transaction,
         transport::TransportError,
     },
     solana_stake_interface::{self as stake, stake_history::StakeHistory},
     solana_system_interface::{instruction as system_instruction, program as system_program},
+    solana_sysvar_id::SysvarId,
     solana_vote_interface::{
         instruction as vote_instruction,
         state::{VoteInit, VoteStateV3, VoteStateVersions},
@@ -85,7 +85,8 @@ pub async fn fix_stake_history(context: &mut ProgramTestContext) {
     )
     .unwrap();
 
-    let stake_history_account = get_account(&mut context.banks_client, &StakeHistory::id()).await;
+    let mut stake_history_account =
+        get_account(&mut context.banks_client, &StakeHistory::id()).await;
 
     let mut stake_history =
         bincode::deserialize::<StakeHistory>(stake_history_account.data()).unwrap();
@@ -100,12 +101,9 @@ pub async fn fix_stake_history(context: &mut ProgramTestContext) {
         stake_history.add(epoch, stake_history_entry.clone());
     }
 
-    let stake_history_account = solana_account::create_account_shared_data_with_fields(
-        &stake_history,
-        (stake_history_account.lamports(), u64::MAX),
-    );
+    stake_history_account.data = bincode::serialize(&stake_history).unwrap();
 
-    context.set_account(&StakeHistory::id(), &stake_history_account);
+    context.set_account(&StakeHistory::id(), &stake_history_account.into());
     context.warp_to_slot(clock.slot + 1).unwrap();
 }
 
@@ -2422,6 +2420,7 @@ pub fn add_validator_stake_account(
     stake_amount: u64,
     status: state::StakeStatus,
 ) {
+    #[allow(deprecated)]
     let meta = stake::state::Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: stake::state::Authorized {
@@ -2492,6 +2491,7 @@ pub fn add_reserve_stake_account(
     withdraw_authority: &Pubkey,
     stake_amount: u64,
 ) {
+    #[allow(deprecated)]
     let meta = stake::state::Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: stake::state::Authorized {

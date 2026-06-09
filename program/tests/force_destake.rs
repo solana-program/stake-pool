@@ -107,6 +107,7 @@ async fn setup(
 #[tokio::test]
 async fn success_update() {
     let stake_pool_accounts = StakePoolAccounts::default();
+    #[allow(deprecated)]
     let meta = Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: Authorized {
@@ -180,6 +181,7 @@ async fn success_update() {
 #[tokio::test]
 async fn fail_increase() {
     let stake_pool_accounts = StakePoolAccounts::default();
+    #[allow(deprecated)]
     let meta = Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: Authorized {
@@ -235,6 +237,7 @@ async fn fail_increase() {
 #[tokio::test]
 async fn success_remove_validator() {
     let stake_pool_accounts = StakePoolAccounts::default();
+    #[allow(deprecated)]
     let meta = Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
         authorized: Authorized {
