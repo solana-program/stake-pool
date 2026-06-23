@@ -201,7 +201,14 @@ async fn success_with_normal() {
 
     // Simulate rewards
     for stake_account in &stake_accounts {
-        context.increment_vote_account_credits(&stake_account.vote.pubkey(), 100);
+        transfer(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &stake_account.stake_account,
+            1_000,
+        )
+        .await;
     }
 
     // Warp one more epoch so the rewards are paid out

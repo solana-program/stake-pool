@@ -916,6 +916,10 @@ async fn fail_withdraw_from_transient() {
         .await
         .unwrap();
 
+    let stake_minimum_delegation =
+        stake_get_minimum_delegation(&mut context.banks_client, &context.payer, &last_blockhash)
+            .await;
+
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
@@ -927,7 +931,7 @@ async fn fail_withdraw_from_transient() {
             &last_blockhash,
             &validator_stake_account.stake_account,
             &validator_stake_account.transient_stake_account,
-            deposit_info.stake_lamports + stake_rent - 2,
+            deposit_info.stake_lamports + stake_rent - stake_minimum_delegation - 2,
             validator_stake_account.transient_stake_seed,
             DecreaseInstruction::Reserve,
         )
@@ -1529,5 +1533,98 @@ async fn success_remove_preferred_validator_resets_preference() {
         user_stake_recipient_account.lamports,
         remaining_lamports + stake_rent,
         "User should receive all lamports from removed validator"
+    );
+}
+
+#[tokio::test]
+async fn fail_withdrawal_minimum_in_preferred() {
+    let stake_pool_accounts = StakePoolAccounts::new_without_fees();
+
+    let (
+        mut context,
+        validator_stake,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_burn,
+    ) = setup_for_withdraw_with_accounts(&stake_pool_accounts, 0).await;
+
+    stake_pool_accounts
+        .set_preferred_validator(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            instruction::PreferredValidatorType::Withdraw,
+            Some(validator_stake.vote.pubkey()),
+        )
+        .await;
+
+    // Warp forward to activation
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slot = first_normal_slot + 1;
+    context.warp_to_slot(slot).unwrap();
+    let error = stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            false,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Withdraw some from preferred, get it down to 2x + 1
+    let stake_minimum_delegation = stake_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.stake_account,
+            &new_authority,
+            tokens_to_burn - stake_minimum_delegation,
+        )
+        .await;
+    assert!(error.is_none(), "{:?}", error);
+
+    // preferred is not empty, withdrawing from non-preferred fails
+    let user_stake_recipient = Keypair::new();
+    create_blank_stake_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &user_stake_recipient,
+    )
+    .await;
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.stake_account,
+            &new_authority,
+            stake_minimum_delegation,
+        )
+        .await;
+    let transaction_error = error.unwrap().unwrap();
+    assert_eq!(
+        transaction_error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        )
     );
 }
