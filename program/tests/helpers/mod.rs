@@ -921,6 +921,16 @@ impl StakePoolAccounts {
         }
     }
 
+    pub fn new_without_fees() -> Self {
+        Self {
+            epoch_fee: state::Fee::default(),
+            withdrawal_fee: state::Fee::default(),
+            deposit_fee: state::Fee::default(),
+            sol_deposit_fee: state::Fee::default(),
+            ..Default::default()
+        }
+    }
+
     pub fn calculate_fee(&self, amount: u64) -> u64 {
         (amount * self.epoch_fee.numerator).div_ceil(self.epoch_fee.denominator)
     }
@@ -2606,12 +2616,11 @@ pub fn add_token_account(
     program_test.add_account(*account_key, fee_account);
 }
 
-pub async fn setup_for_withdraw(
-    token_program_id: Pubkey,
+pub async fn setup_for_withdraw_with_accounts(
+    stake_pool_accounts: &StakePoolAccounts,
     reserve_lamports: u64,
 ) -> (
     ProgramTestContext,
-    StakePoolAccounts,
     ValidatorStakeAccount,
     DepositStakeAccount,
     Keypair,
@@ -2619,7 +2628,6 @@ pub async fn setup_for_withdraw(
     u64,
 ) {
     let mut context = program_test().start_with_context().await;
-    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
@@ -2634,7 +2642,7 @@ pub async fn setup_for_withdraw(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
-        &stake_pool_accounts,
+        stake_pool_accounts,
         None,
     )
     .await;
@@ -2650,7 +2658,7 @@ pub async fn setup_for_withdraw(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
-        &stake_pool_accounts,
+        stake_pool_accounts,
         &validator_stake_account,
         current_minimum_delegation * 3,
     )
@@ -2682,6 +2690,38 @@ pub async fn setup_for_withdraw(
         &user_stake_recipient,
     )
     .await;
+
+    (
+        context,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_withdraw,
+    )
+}
+
+pub async fn setup_for_withdraw(
+    token_program_id: Pubkey,
+    reserve_lamports: u64,
+) -> (
+    ProgramTestContext,
+    StakePoolAccounts,
+    ValidatorStakeAccount,
+    DepositStakeAccount,
+    Keypair,
+    Keypair,
+    u64,
+) {
+    let stake_pool_accounts = StakePoolAccounts::new_with_token_program(token_program_id);
+    let (
+        context,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_withdraw,
+    ) = setup_for_withdraw_with_accounts(&stake_pool_accounts, reserve_lamports).await;
 
     (
         context,
