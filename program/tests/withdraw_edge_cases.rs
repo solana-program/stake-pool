@@ -1597,7 +1597,6 @@ async fn fail_withdrawal_minimum_in_preferred() {
         .await;
     assert!(error.is_none(), "{:?}", error);
 
-    // preferred is not empty, withdrawing from non-preferred fails
     let user_stake_recipient = Keypair::new();
     create_blank_stake_account(
         &mut context.banks_client,
