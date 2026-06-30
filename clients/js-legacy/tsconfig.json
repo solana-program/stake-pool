@@ -3,6 +3,8 @@
     "module": "esnext",
     "target": "es2019",
     "baseUrl": "./src",
+    "rootDir": "./src",
+    "ignoreDeprecations": "6.0",
     "outDir": "dist",
     "declaration": true,
     "declarationDir": "dist",
