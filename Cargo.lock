@@ -7076,9 +7076,9 @@ dependencies = [
 
 [[package]]
 name = "solana-stake-interface"
-version = "4.3.0"
+version = "4.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "252b4291eb25a5a356149ed4d4a940d5f655186210fa84b5d0d8d55c3dd42a81"
+checksum = "afe327b8f7e6b2e696343f90fd338ee69117cec3ad08747251c6ccfa7063f937"
 dependencies = [
  "borsh",
  "num-traits",
@@ -7089,9 +7089,8 @@ dependencies = [
  "solana-instruction",
  "solana-program-error",
  "solana-pubkey 4.2.0",
+ "solana-stake-history",
  "solana-system-interface 3.2.0",
- "solana-sysvar 4.1.0",
- "solana-sysvar-id",
 ]
 
 [[package]]
@@ -8060,7 +8059,7 @@ dependencies = [
  "solana-sdk",
  "solana-sdk-ids",
  "solana-security-txt",
- "solana-stake-interface 4.3.0",
+ "solana-stake-interface 4.3.1",
  "solana-system-interface 3.2.0",
  "solana-sysvar 4.1.0",
  "solana-sysvar-id",
@@ -8091,7 +8090,7 @@ dependencies = [
  "solana-program 4.0.0",
  "solana-remote-wallet",
  "solana-sdk",
- "solana-stake-interface 4.3.0",
+ "solana-stake-interface 4.3.1",
  "solana-system-interface 3.2.0",
  "spl-associated-token-account-interface",
  "spl-stake-pool",
