@@ -2,9 +2,9 @@ from solders.pubkey import Pubkey
 from solders.keypair import Keypair
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
-from solana.rpc.types import TxOpts
+from solana.rpc.models import TxOpts
 from solders.sysvar import CLOCK, RENT
-from solders.transaction import Transaction
+from solders.transaction import Transaction, VersionedTransaction
 import solders.system_program as sys
 
 from vote.constants import VOTE_PROGRAM_ID, VOTE_STATE_LEN
@@ -17,7 +17,7 @@ async def create_vote(
     print(f"Creating vote account {vote.pubkey()}")
     resp = await client.get_minimum_balance_for_rent_exemption(VOTE_STATE_LEN)
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sys.create_account(
                 sys.CreateAccountParams(
@@ -43,7 +43,7 @@ async def create_vote(
         payer=payer.pubkey(),
         signing_keypairs=[payer, vote, node],
         recent_blockhash=recent_blockhash,
-    )
+    ))
     await client.send_transaction(
         txn,
         opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
