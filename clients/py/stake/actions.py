@@ -4,9 +4,9 @@ import solders.system_program as sys
 from solana.constants import SYSTEM_PROGRAM_ID
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
-from solana.rpc.types import TxOpts
+from solana.rpc.models import TxOpts
 from solders.sysvar import CLOCK, STAKE_HISTORY
-from solders.transaction import Transaction
+from solders.transaction import Transaction, VersionedTransaction
 
 from stake.constants import STAKE_LEN, STAKE_PROGRAM_ID, SYSVAR_STAKE_CONFIG_ID
 from stake.state import Authorized, Lockup, StakeAuthorize
@@ -20,7 +20,7 @@ async def create_stake(client: AsyncClient, payer: Keypair, stake: Keypair, auth
     print(f"Creating stake {stake.pubkey()}")
     resp = await client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sys.create_account(
                 sys.CreateAccountParams(
@@ -49,14 +49,14 @@ async def create_stake(client: AsyncClient, payer: Keypair, stake: Keypair, auth
         payer=payer.pubkey(),
         signing_keypairs=[payer, stake],
         recent_blockhash=recent_blockhash,
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
 async def delegate_stake(client: AsyncClient, payer: Keypair, staker: Keypair, stake: Pubkey, vote: Pubkey):
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
     signers = [payer, staker] if payer.pubkey() != staker.pubkey() else [payer]
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             st.delegate_stake(
                 st.DelegateStakeParams(
@@ -72,7 +72,7 @@ async def delegate_stake(client: AsyncClient, payer: Keypair, staker: Keypair, s
         payer=payer.pubkey(),
         signing_keypairs=signers,
         recent_blockhash=recent_blockhash,
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -82,7 +82,7 @@ async def authorize(
 ):
     signers = [payer, authority] if payer.pubkey() != authority.pubkey() else [payer]
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [st.authorize(
             st.AuthorizeParams(
                 stake=stake,
@@ -95,5 +95,5 @@ async def authorize(
         payer=payer.pubkey(),
         signing_keypairs=signers,
         recent_blockhash=recent_blockhash,
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)

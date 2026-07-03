@@ -4,9 +4,9 @@ from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
-from solana.rpc.types import TxOpts
+from solana.rpc.models import TxOpts
 from solders.sysvar import CLOCK, RENT, STAKE_HISTORY
-from solders.transaction import Transaction
+from solders.transaction import Transaction, VersionedTransaction
 import solders.system_program as sys
 
 from spl.token.constants import TOKEN_PROGRAM_ID
@@ -45,7 +45,7 @@ async def create(client: AsyncClient, manager: Keypair,
     resp = await client.get_minimum_balance_for_rent_exemption(validator_list_size)
     validator_list_balance = resp.value
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sys.create_account(
                 sys.CreateAccountParams(
@@ -69,13 +69,13 @@ async def create(client: AsyncClient, manager: Keypair,
         payer=manager.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=[manager, stake_pool, validator_list],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
     (withdraw_authority, seed) = find_withdraw_authority_program_address(
         STAKE_POOL_PROGRAM_ID, stake_pool.pubkey())
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.initialize(
                 sp.InitializeParams(
@@ -100,7 +100,7 @@ async def create(client: AsyncClient, manager: Keypair,
         payer=manager.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=[manager],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -141,7 +141,7 @@ async def add_validator_to_pool(
     data = resp.value.data if resp.value else bytes()
     stake_pool = StakePool.decode(data)
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.add_validator_to_pool_with_vote(
                 STAKE_POOL_PROGRAM_ID,
@@ -156,7 +156,7 @@ async def add_validator_to_pool(
         payer=staker.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=[staker],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -172,7 +172,7 @@ async def remove_validator_from_pool(
     validator_list = ValidatorList.decode(data)
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator)
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.remove_validator_from_pool_with_vote(
                 STAKE_POOL_PROGRAM_ID,
@@ -187,7 +187,7 @@ async def remove_validator_from_pool(
         recent_blockhash=recent_blockhash,
         signing_keypairs=[staker],
         payer=staker.pubkey()
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -202,7 +202,7 @@ async def deposit_sol(
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.deposit_sol(
                 sp.DepositSolParams(
@@ -225,7 +225,7 @@ async def deposit_sol(
         payer=funder.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=[funder],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -240,7 +240,7 @@ async def withdraw_sol(
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.withdraw_sol(
                 sp.WithdrawSolParams(
@@ -265,7 +265,7 @@ async def withdraw_sol(
         recent_blockhash=recent_blockhash,
         payer=owner.pubkey(),
         signing_keypairs=[owner],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -296,7 +296,7 @@ async def deposit_stake(
     )
 
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             st.authorize(
                 st.AuthorizeParams(
@@ -340,7 +340,7 @@ async def deposit_stake(
         payer=deposit_stake_authority.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=[deposit_stake_authority],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -379,7 +379,7 @@ async def withdraw_stake(
     signers = [payer, source_transfer_authority, destination_stake] \
         if payer != source_transfer_authority else [payer, destination_stake]
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sys.create_account(
                 sys.CreateAccountParams(
@@ -413,7 +413,7 @@ async def withdraw_stake(
         payer=payer.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=signers,
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -471,23 +471,23 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
         last_instruction = update_list_instructions.pop()
         for update_list_instruction in update_list_instructions:
             recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-            txn = Transaction.new_signed_with_payer(
+            txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
                 [update_list_instruction],
                 payer=payer.pubkey(),
                 recent_blockhash=recent_blockhash,
                 signing_keypairs=[payer],
-            )
+            ))
             await client.send_transaction(txn, opts=TxOpts(skip_confirmation=True, preflight_commitment=Confirmed))
         recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-        txn = Transaction.new_signed_with_payer(
+        txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
             [last_instruction],
             payer=payer.pubkey(),
             recent_blockhash=recent_blockhash,
             signing_keypairs=[payer],
-        )
+        ))
         await client.send_transaction(txn, opts=OPTS)
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.update_stake_pool_balance(
                 sp.UpdateStakePoolBalanceParams(
@@ -512,7 +512,7 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
         payer=payer.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=[payer],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -612,12 +612,12 @@ async def increase_validator_stake(
 
     signers = [payer, staker] if payer != staker else [payer]
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [instruction],
         payer=payer.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=signers,
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -712,12 +712,12 @@ async def decrease_validator_stake(
 
     signers = [payer, staker] if payer != staker else [payer]
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [instruction],
         payer=payer.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=signers,
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -731,7 +731,7 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
     (token_metadata, _seed) = find_metadata_account(stake_pool.pool_mint)
 
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.create_token_metadata(
                 sp.CreateTokenMetadataParams(
@@ -753,7 +753,7 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
         recent_blockhash=recent_blockhash,
         payer=payer.pubkey(),
         signing_keypairs=[payer],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
 
 
@@ -767,7 +767,7 @@ async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
     (token_metadata, _seed) = find_metadata_account(stake_pool.pool_mint)
 
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = Transaction.new_signed_with_payer(
+    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sp.update_token_metadata(
                 sp.UpdateTokenMetadataParams(
@@ -787,5 +787,5 @@ async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
         payer=payer.pubkey(),
         recent_blockhash=recent_blockhash,
         signing_keypairs=[payer],
-    )
+    ))
     await client.send_transaction(txn, opts=OPTS)
