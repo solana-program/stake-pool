@@ -12,7 +12,7 @@ hyperframe==6.1.0
 idna==3.18
 jsonalias==0.1.1
 pydantic==2.13.4
-pydantic_core==2.46.4
+pydantic_core==2.47.0
 solana==0.40.0
 solders==0.27.1
 truststore==0.10.4
