@@ -104,7 +104,6 @@ appropriate, the GitHub security advisory is no longer needed and can be closed.
 | Acknowledgment    | 72 hours               | 72 hours         | 72 hours    |
 | Triage complete   | 3 days                 | 5 days           | 7 days      |
 | Fix ready         | 14 days                | 30 days          | 60 days     |
-| Public disclosure | ≤90 days               | ≤90 days         | ≤90 days    |
 
 These are targets, not guarantees. We will communicate proactively if a
 milestone slips.
