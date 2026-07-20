@@ -18,4 +18,4 @@ solders==0.27.1
 truststore==0.10.4
 typing-inspection==0.4.2
 typing_extensions==4.16.0
-websockets==16.1
+websockets==16.1.1
