@@ -2906,7 +2906,7 @@ impl Processor {
 
         let has_withdrawable_active_stake = validator_list
             .find::<ValidatorStakeInfo, _>(|x| {
-                ValidatorStakeInfo::active_lamports_greater_than(
+                ValidatorStakeInfo::active_lamports_greater_than_or_equal_to(
                     x,
                     &minimum_lamports_with_tolerance,
                 ) && ValidatorStakeInfo::is_active(x)
@@ -2914,7 +2914,7 @@ impl Processor {
             .is_some();
         let has_withdrawable_transient_stake = validator_list
             .find::<ValidatorStakeInfo, _>(|x| {
-                ValidatorStakeInfo::transient_lamports_greater_than(
+                ValidatorStakeInfo::transient_lamports_greater_than_or_equal_to(
                     x,
                     &minimum_lamports_with_tolerance,
                 ) && ValidatorStakeInfo::is_active(x)
