@@ -2895,20 +2895,26 @@ impl Processor {
         let lamports_per_pool_token = stake_pool
             .get_lamports_per_pool_token()
             .ok_or(StakePoolError::CalculationFailure)?;
-        let minimum_lamports_with_tolerance =
-            required_lamports.saturating_add(lamports_per_pool_token);
 
-        let has_active_stake = validator_list
+        // Since this instruction performs a stake split on an active stake, the
+        // source stake needs to have at least twice the minimum delegation
+        // amount, so that both accounts have at least the minimum delegation
+        // afterwards.
+        let minimum_lamports_with_tolerance = required_lamports
+            .saturating_add(stake_minimum_delegation)
+            .saturating_add(lamports_per_pool_token);
+
+        let has_withdrawable_active_stake = validator_list
             .find::<ValidatorStakeInfo, _>(|x| {
-                ValidatorStakeInfo::active_lamports_greater_than(
+                ValidatorStakeInfo::active_lamports_greater_than_or_equal_to(
                     x,
                     &minimum_lamports_with_tolerance,
                 ) && ValidatorStakeInfo::is_active(x)
             })
             .is_some();
-        let has_transient_stake = validator_list
+        let has_withdrawable_transient_stake = validator_list
             .find::<ValidatorStakeInfo, _>(|x| {
-                ValidatorStakeInfo::transient_lamports_greater_than(
+                ValidatorStakeInfo::transient_lamports_greater_than_or_equal_to(
                     x,
                     &minimum_lamports_with_tolerance,
                 ) && ValidatorStakeInfo::is_active(x)
@@ -2917,7 +2923,7 @@ impl Processor {
 
         let validator_list_item_info = if *stake_split_from.key == stake_pool.reserve_stake {
             // check that the validator stake accounts have no withdrawable stake
-            if has_transient_stake || has_active_stake {
+            if has_withdrawable_transient_stake || has_withdrawable_active_stake {
                 msg!("Error withdrawing from reserve: validator stake accounts have lamports available, please use those first.");
                 return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
             }
@@ -2952,11 +2958,9 @@ impl Processor {
                         ValidatorStakeInfo::memcmp_pubkey(x, &preferred_withdraw_validator)
                     })
                 {
-                    let available_lamports =
-                        u64::from(preferred_validator_info.active_stake_lamports)
-                            .saturating_sub(minimum_lamports_with_tolerance);
                     if preferred_withdraw_validator != vote_account_address
-                        && available_lamports > 0
+                        && u64::from(preferred_validator_info.active_stake_lamports)
+                            >= minimum_lamports_with_tolerance
                     {
                         msg!("Validator vote address {} is preferred for withdrawals, it currently has {} lamports available. Please withdraw those before using other validator stake accounts.", preferred_withdraw_validator, u64::from(preferred_validator_info.active_stake_lamports));
                         return Err(StakePoolError::IncorrectWithdrawVoteAddress.into());
@@ -2972,7 +2976,7 @@ impl Processor {
                 })
                 .ok_or(StakePoolError::ValidatorNotFound)?;
 
-            let withdraw_source = if has_active_stake {
+            let withdraw_source = if has_withdrawable_active_stake {
                 // if there's any active stake, we must withdraw from an active
                 // stake account
                 check_validator_stake_address(
@@ -2983,7 +2987,7 @@ impl Processor {
                     NonZeroU32::new(validator_stake_info.validator_seed_suffix.into()),
                 )?;
                 StakeWithdrawSource::Active
-            } else if has_transient_stake
+            } else if has_withdrawable_transient_stake
                 || validator_stake_info.transient_stake_lamports != 0.into()
             {
                 // if there's any transient stake, we must withdraw from there

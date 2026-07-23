@@ -54,8 +54,8 @@ solana-account = { version = "4.3.1", features = ["bincode"] }
 solana-compute-budget-interface = "3.0.0"
 solana-native-token = "3.0.0"
 solana-program = "4.0.0"
-solana-program-test = { version = "3.1.8", features = ["agave-unstable-api"] }
-solana-sdk = "3.0.0"
+solana-program-test = { version = "4.1.0-rc.1", features = ["agave-unstable-api"] }
+solana-sdk = "4.0.0"
 solana-vote-interface = { version = "6.0.0", features = ["bincode"] }
 spl-token-interface = "3.0.0"
 test-case = "3.3"

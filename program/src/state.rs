@@ -739,16 +739,16 @@ impl ValidatorStakeInfo {
 
     /// Performs a comparison, used to check if this validator stake
     /// info has more active lamports than some limit
-    pub fn active_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+    pub fn active_lamports_greater_than_or_equal_to(data: &[u8], lamports: &u64) -> bool {
         // without this unwrap, compute usage goes up significantly
-        u64::try_from_slice(&data[0..8]).unwrap() > *lamports
+        u64::try_from_slice(&data[0..8]).unwrap() >= *lamports
     }
 
     /// Performs a comparison, used to check if this validator stake
     /// info has more transient lamports than some limit
-    pub fn transient_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+    pub fn transient_lamports_greater_than_or_equal_to(data: &[u8], lamports: &u64) -> bool {
         // without this unwrap, compute usage goes up significantly
-        u64::try_from_slice(&data[8..16]).unwrap() > *lamports
+        u64::try_from_slice(&data[8..16]).unwrap() >= *lamports
     }
 
     /// Check that the validator stake info is totally removed
