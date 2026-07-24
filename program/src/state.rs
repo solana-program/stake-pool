@@ -969,11 +969,11 @@ impl Fee {
         // overflow
         if (old_num as u128)
             .checked_mul(self.denominator as u128)
-            .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
+            .and_then(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
             .ok_or(StakePoolError::CalculationFailure)?
             < (self.numerator as u128)
                 .checked_mul(old_denom as u128)
-                .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
+                .and_then(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
                 .ok_or(StakePoolError::CalculationFailure)?
         {
             msg!(
@@ -1457,5 +1457,21 @@ mod test {
 
         let withdraw_result = stake_pool.calc_lamports_withdraw_amount(1).unwrap();
         assert_eq!(stake_pool.total_lamports, withdraw_result);
+    }
+
+    #[test]
+    fn check_withdrawal_fee_overflow_failure() {
+        let old_fee = Fee {
+            numerator: 1,
+            denominator: u64::MAX,
+        };
+        let new_fee = Fee {
+            numerator: u64::MAX,
+            denominator: u64::MAX,
+        };
+        assert_eq!(
+            StakePoolError::CalculationFailure,
+            new_fee.check_withdrawal(&old_fee).unwrap_err()
+        );
     }
 }
