@@ -952,7 +952,7 @@ impl Fee {
     /// Withdrawal fees have some additional restrictions, this function checks
     /// if those are met, returning an error if not.
     pub fn check_withdrawal(&self, old_withdrawal_fee: &Fee) -> Result<(), StakePoolError> {
-        // If the previous withdrawal fee was 0, we allow the fee to be set to a
+        // If the previous withdrawal fee was 0, we allow the fee to be set to
         // WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE_FACTOR
         let (old_num, old_denom) =
             if old_withdrawal_fee.denominator == 0 || old_withdrawal_fee.numerator == 0 {
