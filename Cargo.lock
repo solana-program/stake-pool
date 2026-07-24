@@ -7785,9 +7785,9 @@ dependencies = [
 
 [[package]]
 name = "solana-zero-copy"
-version = "1.0.1"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5a91404c7de468dd80658cdb5d894ec803d1092ea6e2bfdf84eee6f07559c0d"
+checksum = "8ea15126ebdc7e270c50d43884369af9f51d2308156d46a18e351522a164844d"
 dependencies = [
  "borsh",
  "bytemuck",
@@ -8077,7 +8077,7 @@ dependencies = [
  "solana-sysvar-id",
  "solana-vote-interface 6.0.3",
  "spl-pod",
- "spl-token-2022-interface 3.0.1",
+ "spl-token-2022-interface 3.1.1",
  "spl-token-interface 3.0.0",
  "test-case",
  "thiserror 2.0.19",
@@ -8107,7 +8107,7 @@ dependencies = [
  "spl-associated-token-account-interface",
  "spl-stake-pool",
  "spl-token",
- "spl-token-2022-interface 3.0.1",
+ "spl-token-2022-interface 3.1.1",
  "spl-token-interface 3.0.0",
 ]
 
@@ -8169,9 +8169,9 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022-interface"
-version = "3.0.1"
+version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5404a19d91e5604db1969f981696c199b654826e5008e9d135b844211b6799e"
+checksum = "821d96d034ea31c4965d182c742153c491ae0abee531331b55771086c5030d86"
 dependencies = [
  "arrayref",
  "bytemuck",
