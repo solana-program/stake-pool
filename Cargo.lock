@@ -4641,7 +4641,7 @@ dependencies = [
  "solana-instruction-error",
  "solana-pubkey 4.3.0",
  "solana-sdk-ids",
- "solana-sysvar 4.1.0",
+ "solana-sysvar 4.2.0",
 ]
 
 [[package]]
@@ -6218,7 +6218,7 @@ dependencies = [
  "solana-slot-hashes",
  "solana-slot-history",
  "solana-stable-layout",
- "solana-sysvar 4.1.0",
+ "solana-sysvar 4.2.0",
  "solana-sysvar-id",
 ]
 
@@ -7114,9 +7114,9 @@ dependencies = [
 
 [[package]]
 name = "solana-stake-history"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c736a6aa0e53b9d264d90b06589fc0996f49f882f3e71842ed754fc57ffc1a43"
+checksum = "c814b4e2570f8c343eb1d4f968ff981bdf518afc3643d070d8e5a28158e85a4b"
 dependencies = [
  "serde",
  "serde_derive",
@@ -7161,7 +7161,7 @@ dependencies = [
  "solana-program-error",
  "solana-pubkey 4.3.0",
  "solana-system-interface 3.3.0",
- "solana-sysvar 4.1.0",
+ "solana-sysvar 4.2.0",
  "solana-sysvar-id",
 ]
 
@@ -7430,9 +7430,9 @@ dependencies = [
 
 [[package]]
 name = "solana-sysvar"
-version = "4.1.0"
+version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ada7045bbfdd802af08fbc9c7e2b56ddabb20599d22e4c3840fcef5e7afb8324"
+checksum = "0214d668b0aab7a64b49e43b7947307985fca4e03d3ef880cd8ee43f52f13a34"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -8133,7 +8133,7 @@ dependencies = [
  "solana-security-txt",
  "solana-stake-interface 4.3.0",
  "solana-system-interface 3.3.0",
- "solana-sysvar 4.1.0",
+ "solana-sysvar 4.2.0",
  "solana-sysvar-id",
  "solana-vote-interface 6.0.3",
  "spl-pod",
