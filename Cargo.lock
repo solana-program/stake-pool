@@ -7786,9 +7786,9 @@ dependencies = [
 
 [[package]]
 name = "solana-vote-interface"
-version = "6.0.3"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13a7a204b455a53fe8c9a26a6885391a5896835e06694dbe0cf37c580f82f128"
+checksum = "c372a70d5c9738590f9762eb8bf01f7a794fdf0170ee5c1624df9a05e09603bc"
 dependencies = [
  "bincode",
  "cfg_eval",
@@ -8134,7 +8134,7 @@ dependencies = [
  "solana-system-interface 3.3.0",
  "solana-sysvar 4.2.0",
  "solana-sysvar-id",
- "solana-vote-interface 6.0.3",
+ "solana-vote-interface 6.1.0",
  "spl-pod",
  "spl-token-2022-interface 3.0.1",
  "spl-token-interface 3.0.0",
