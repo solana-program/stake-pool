@@ -4628,9 +4628,9 @@ dependencies = [
 
 [[package]]
 name = "solana-account"
-version = "4.3.1"
+version = "4.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "385cad928d576683db3afef1b88d00a31a7126cc9f6f3f0c9f6b2d181437f53c"
+checksum = "78177c7ed8e3ed294432a90d51eff61a005d571b736e3aad65541b6a66b66838"
 dependencies = [
  "bincode",
  "serde",
@@ -8109,7 +8109,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_derive",
- "solana-account 4.3.1",
+ "solana-account 4.4.0",
  "solana-account-info",
  "solana-borsh",
  "solana-clock",
