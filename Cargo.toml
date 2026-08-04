@@ -17,4 +17,4 @@ check-cfg = [
 ]
 
 [workspace.metadata.cli]
-solana = "3.1.14"
+solana = "4.0.3"
