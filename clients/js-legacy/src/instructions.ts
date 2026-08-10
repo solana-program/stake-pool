@@ -1093,20 +1093,24 @@ export class StakePoolInstruction {
     this.checkProgramId(instruction.programId);
     this.checkKeyLength(instruction.keys, 9);
 
-    const { amount } = decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol, instruction.data);
+    const { lamports } = decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol, instruction.data);
+
+    const keys = instruction.keys;
 
     return {
       programId: instruction.programId,
-      stakePool: instruction.keys[0].pubkey,
-      depositAuthority: instruction.keys[1].pubkey,
-      withdrawAuthority: instruction.keys[2].pubkey,
-      reserveStake: instruction.keys[3].pubkey,
-      fundingAccount: instruction.keys[4].pubkey,
-      destinationPoolAccount: instruction.keys[5].pubkey,
-      managerFeeAccount: instruction.keys[6].pubkey,
-      referralPoolAccount: instruction.keys[7].pubkey,
-      poolMint: instruction.keys[8].pubkey,
-      lamports: amount,
+      stakePool: keys[0].pubkey,
+      withdrawAuthority: keys[1].pubkey,
+      reserveStake: keys[2].pubkey,
+      fundingAccount: keys[3].pubkey,
+      destinationPoolAccount: keys[4].pubkey,
+      managerFeeAccount: keys[5].pubkey,
+      referralPoolAccount: keys[6].pubkey,
+      poolMint: keys[7].pubkey,
+      // keys[8] and keys[9] are the system and token programs. The optional
+      // deposit authority is appended after them by depositSol().
+      depositAuthority: keys.length > 10 ? keys[10].pubkey : undefined,
+      lamports,
     };
   }
 
