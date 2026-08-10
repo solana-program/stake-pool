@@ -173,6 +173,43 @@ describe('StakePoolProgram', () => {
     expect(instruction2.keys[10].pubkey).toEqual(payload.depositAuthority);
   });
 
+  it('StakePoolInstruction.decodeDepositSol round-trips depositSol', () => {
+    const payload: DepositSolParams = {
+      programId: STAKE_POOL_PROGRAM_ID,
+      stakePool: stakePoolAddress,
+      withdrawAuthority: Keypair.generate().publicKey,
+      reserveStake: Keypair.generate().publicKey,
+      fundingAccount: Keypair.generate().publicKey,
+      destinationPoolAccount: Keypair.generate().publicKey,
+      managerFeeAccount: Keypair.generate().publicKey,
+      referralPoolAccount: Keypair.generate().publicKey,
+      poolMint: Keypair.generate().publicKey,
+      lamports: 99999,
+    };
+
+    const decoded = StakePoolInstruction.decodeDepositSol(StakePoolInstruction.depositSol(payload));
+
+    expect(decoded.stakePool).toEqual(payload.stakePool);
+    expect(decoded.withdrawAuthority).toEqual(payload.withdrawAuthority);
+    expect(decoded.reserveStake).toEqual(payload.reserveStake);
+    expect(decoded.fundingAccount).toEqual(payload.fundingAccount);
+    expect(decoded.destinationPoolAccount).toEqual(payload.destinationPoolAccount);
+    expect(decoded.managerFeeAccount).toEqual(payload.managerFeeAccount);
+    expect(decoded.referralPoolAccount).toEqual(payload.referralPoolAccount);
+    expect(decoded.poolMint).toEqual(payload.poolMint);
+    expect(decoded.lamports).toEqual(payload.lamports);
+    expect(decoded.depositAuthority).toBeUndefined();
+
+    const depositAuthority = Keypair.generate().publicKey;
+    const decodedWithAuthority = StakePoolInstruction.decodeDepositSol(
+      StakePoolInstruction.depositSol({ ...payload, depositAuthority }),
+    );
+
+    expect(decodedWithAuthority.depositAuthority).toEqual(depositAuthority);
+    expect(decodedWithAuthority.withdrawAuthority).toEqual(payload.withdrawAuthority);
+    expect(decodedWithAuthority.lamports).toEqual(payload.lamports);
+  });
+
   describe('addValidatorToPool', () => {
     const validatorList = mockValidatorList();
     const decodedValidatorList = ValidatorListLayout.decode(validatorList.data);
