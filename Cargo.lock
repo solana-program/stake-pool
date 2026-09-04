@@ -9277,7 +9277,7 @@ dependencies = [
  "bincode",
  "clap",
  "serde",
- "solana-account-decoder 3.1.8",
+ "solana-account-decoder 4.2.0-rc.1",
  "solana-clap-utils",
  "solana-cli-config",
  "solana-cli-output",
