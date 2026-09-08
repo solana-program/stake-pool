@@ -418,7 +418,7 @@ async fn fail_with_wrong_mint_authority() {
 }
 
 #[tokio::test]
-async fn fail_with_freeze_authority() {
+async fn succeed_with_freeze_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::default();
 
@@ -474,7 +474,7 @@ async fn fail_with_freeze_authority() {
     .await
     .unwrap();
 
-    let error = create_stake_pool(
+    create_stake_pool(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -497,17 +497,7 @@ async fn fail_with_freeze_authority() {
         stake_pool_accounts.max_validators,
     )
     .await
-    .err()
-    .unwrap()
     .unwrap();
-
-    assert_eq!(
-        error,
-        TransactionError::InstructionError(
-            2,
-            InstructionError::Custom(error::StakePoolError::InvalidMintFreezeAuthority as u32),
-        )
-    );
 }
 
 #[tokio::test]
