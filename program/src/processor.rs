@@ -2875,12 +2875,6 @@ impl Processor {
             return Err(StakePoolError::WithdrawalTooSmall.into());
         }
 
-        if let Some(minimum_lamports_out) = minimum_lamports_out {
-            if withdraw_lamports < minimum_lamports_out {
-                return Err(StakePoolError::ExceededSlippage.into());
-            }
-        }
-
         let split_from_rent = rent.minimum_balance(stake_split_from.data_len());
         let stake_minimum_delegation = stake::tools::get_minimum_delegation()?;
         let stake_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
@@ -3056,6 +3050,12 @@ impl Processor {
             }
             Some((validator_stake_info, withdraw_source))
         };
+
+        if let Some(minimum_lamports_out) = minimum_lamports_out {
+            if withdraw_lamports < minimum_lamports_out {
+                return Err(StakePoolError::ExceededSlippage.into());
+            }
+        }
 
         Self::token_burn(
             token_program_info.clone(),
