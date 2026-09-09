@@ -13,7 +13,7 @@ use {
         Arg, ArgGroup, ArgMatches, SubCommand,
     },
     solana_clap_utils::{
-        compute_unit_price::{compute_unit_price_arg, COMPUTE_UNIT_PRICE_ARG},
+        compute_budget::{compute_unit_price_arg, COMPUTE_UNIT_PRICE_ARG},
         input_parsers::{keypair_of, pubkey_of},
         input_validators::{
             is_amount, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
@@ -58,7 +58,12 @@ use {
     spl_token_2022_interface::{
         check_spl_token_program_account, extension::StateWithExtensions, state::Mint,
     },
-    std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
+    std::{
+        cmp::{Ordering, Reverse},
+        num::NonZeroU32,
+        process::exit,
+        rc::Rc,
+    },
 };
 
 pub(crate) struct Config {
@@ -1459,8 +1464,7 @@ fn command_list(
 
     match sort_by {
         Some("stake") => {
-            cli_stake_pool_stake_account_infos
-                .sort_by(|a, b| b.validator_lamports.cmp(&a.validator_lamports));
+            cli_stake_pool_stake_account_infos.sort_by_key(|b| Reverse(b.validator_lamports));
         }
         Some("update-epoch") => {
             cli_stake_pool_stake_account_infos.sort_by(|a, b| {
