@@ -264,8 +264,8 @@ async fn fail_create_metadata_twice() {
 
     match error {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = AlreadyInUse as u32;
-            assert_eq!(error_index, program_error);
+            const METAPLEX_ERROR_CODE: u32 = 199;
+            assert_eq!(error_index, METAPLEX_ERROR_CODE);
         }
         _ => panic!("Wrong error occurs while trying to create pool token metadata twice"),
     }
