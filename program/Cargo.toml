@@ -1,6 +1,6 @@
 [package]
 name = "spl-stake-pool"
-version = "2.0.3"
+version = "2.1.1"
 description = "Solana Program Library Stake Pool"
 homepage = "https://www.solana-program.com/docs/stake-pool"
 authors = ["Anza Maintainers <maintainers@anza.xyz>"]
