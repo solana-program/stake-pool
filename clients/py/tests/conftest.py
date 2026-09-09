@@ -107,10 +107,10 @@ class Waiter:
         current_epoch = resp.value.epoch
         next_epoch = current_epoch
         while current_epoch == next_epoch:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.3)
             resp = await async_client.get_epoch_info(commitment=Confirmed)
             next_epoch = resp.value.epoch
-        await asyncio.sleep(0.2)  # wait one more block to avoid reward payout time
+        await asyncio.sleep(0.3)  # wait one more block to avoid reward payout time
 
     @staticmethod
     async def wait_for_next_epoch_if_soon(async_client: AsyncClient):
