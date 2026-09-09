@@ -11,7 +11,7 @@ use {
         transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
-        error::StakePoolError::{AlreadyInUse, SignatureMissing, WrongManager},
+        error::StakePoolError::{SignatureMissing, WrongManager},
         instruction, MINIMUM_RESERVE_LAMPORTS,
     },
     test_case::test_case,

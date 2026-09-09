@@ -20,7 +20,7 @@ from system.actions import airdrop
 from stake_pool.actions import deposit_sol, create_all, add_validator_to_pool
 from stake_pool.state import Fee
 
-NUM_SLOTS_PER_EPOCH: int = 32
+NUM_SLOTS_PER_EPOCH: int = 64
 AIRDROP_LAMPORTS: int = 30_000_000_000
 
 
@@ -115,7 +115,7 @@ class Waiter:
     @staticmethod
     async def wait_for_next_epoch_if_soon(async_client: AsyncClient):
         resp = await async_client.get_epoch_info(commitment=Confirmed)
-        if resp.value.slots_in_epoch - resp.value.slot_index < 20:
+        if resp.value.slots_in_epoch - resp.value.slot_index < NUM_SLOTS_PER_EPOCH // 2:
             await Waiter.wait_for_next_epoch(async_client)
             return True
         else:
