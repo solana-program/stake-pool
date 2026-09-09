@@ -13,7 +13,7 @@ MAX_VALIDATORS_TO_UPDATE: int = 4
 MINIMUM_RESERVE_LAMPORTS: int = 0
 """Minimum balance required in the stake pool reserve"""
 
-MINIMUM_ACTIVE_STAKE: int = 1_000_000
+MINIMUM_ACTIVE_STAKE: int = 1_000_000_000
 """Minimum active delegated staked required in a stake account"""
 
 METADATA_PROGRAM_ID = Pubkey.from_string("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")

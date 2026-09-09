@@ -1,4 +1,4 @@
-RUST_TOOLCHAIN_NIGHTLY = nightly-2026-01-22
+RUST_TOOLCHAIN_NIGHTLY = nightly-2026-04-16
 SOLANA_CLI_VERSION = $(shell toml get ./Cargo.toml workspace.metadata.cli.solana)
 
 nightly = +${RUST_TOOLCHAIN_NIGHTLY}
@@ -91,7 +91,7 @@ format-rust:
 	cargo $(nightly) fmt --all $(ARGS)
 
 build-sbf-%:
-	cargo build-sbf --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
+	cargo build-sbf --arch v3 --manifest-path $(call make-path,$*)/Cargo.toml $(ARGS)
 
 build-wasm-%:
 	cargo build --target wasm32-unknown-unknown --manifest-path $(call make-path,$*)/Cargo.toml --all-features $(ARGS)

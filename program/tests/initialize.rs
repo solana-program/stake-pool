@@ -48,7 +48,19 @@ async fn create_required_accounts(
     .await
     .unwrap();
 
-    let required_extensions = ExtensionType::get_required_init_account_extensions(mint_extensions);
+    let mut required_extensions = vec![];
+    for extension in mint_extensions {
+        match extension {
+            ExtensionType::NonTransferable => {
+                required_extensions.push(ExtensionType::NonTransferableAccount);
+                required_extensions.push(ExtensionType::ImmutableOwner);
+            }
+            ExtensionType::TransferFeeConfig => {
+                required_extensions.push(ExtensionType::TransferFeeAmount);
+            }
+            _ => {}
+        }
+    }
     create_token_account(
         banks_client,
         payer,
@@ -516,9 +528,7 @@ async fn success_with_supported_extensions() {
     )
     .await;
 
-    let mut account_extensions =
-        ExtensionType::get_required_init_account_extensions(&mint_extensions);
-    account_extensions.push(ExtensionType::CpiGuard);
+    let account_extensions = [ExtensionType::TransferFeeAmount, ExtensionType::CpiGuard];
     let pool_fee_account = Keypair::new();
     create_token_account(
         &mut banks_client,
@@ -565,7 +575,7 @@ async fn fail_with_unsupported_mint_extension() {
     let stake_pool_accounts =
         StakePoolAccounts::new_with_token_program(spl_token_2022_interface::id());
 
-    let mint_extensions = vec![ExtensionType::NonTransferable];
+    let mint_extensions = [ExtensionType::NonTransferable];
     create_required_accounts(
         &mut banks_client,
         &payer,
@@ -575,7 +585,10 @@ async fn fail_with_unsupported_mint_extension() {
     )
     .await;
 
-    let required_extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
+    let required_extensions = [
+        ExtensionType::NonTransferableAccount,
+        ExtensionType::ImmutableOwner,
+    ];
     let pool_fee_account = Keypair::new();
     create_token_account(
         &mut banks_client,

@@ -20,7 +20,7 @@ from system.actions import airdrop
 from stake_pool.actions import deposit_sol, create_all, add_validator_to_pool
 from stake_pool.state import Fee
 
-NUM_SLOTS_PER_EPOCH: int = 32
+NUM_SLOTS_PER_EPOCH: int = 64
 AIRDROP_LAMPORTS: int = 30_000_000_000
 
 
@@ -107,10 +107,10 @@ class Waiter:
         current_epoch = resp.value.epoch
         next_epoch = current_epoch
         while current_epoch == next_epoch:
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(0.3)
             resp = await async_client.get_epoch_info(commitment=Confirmed)
             next_epoch = resp.value.epoch
-        await asyncio.sleep(0.4)  # wait one more block to avoid reward payout time
+        await asyncio.sleep(0.3)  # wait one more block to avoid reward payout time
 
     @staticmethod
     async def wait_for_next_epoch_if_soon(async_client: AsyncClient):

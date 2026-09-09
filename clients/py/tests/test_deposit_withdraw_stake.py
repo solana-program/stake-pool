@@ -18,7 +18,8 @@ async def test_deposit_withdraw_stake(async_client, validators, payer, stake_poo
     data = resp.value.data if resp.value else bytes()
     stake_pool = StakePool.decode(data)
     validator = next(iter(validators))
-    stake_amount = MINIMUM_ACTIVE_STAKE
+    stake_amount = MINIMUM_ACTIVE_STAKE * 3
+    withdraw_amount = MINIMUM_ACTIVE_STAKE
     stake = Keypair()
     await create_stake(async_client, payer, stake, payer.pubkey(), stake_amount)
     stake = stake.pubkey()
@@ -44,9 +45,9 @@ async def test_deposit_withdraw_stake(async_client, validators, payer, stake_poo
     destination_stake = Keypair()
     await withdraw_stake(
         async_client, payer, payer, destination_stake, stake_pool_address, validator,
-        payer.pubkey(), token_account, stake_amount
+        payer.pubkey(), token_account, withdraw_amount
     )
 
     pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
     pool_token_balance = pool_token_balance.value.amount
-    assert pool_token_balance == str(stake_rent_exemption + pre_pool_token_balance)
+    assert pool_token_balance == str(stake_amount + stake_rent_exemption + pre_pool_token_balance - withdraw_amount)

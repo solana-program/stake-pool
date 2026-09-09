@@ -1124,18 +1124,16 @@ impl Processor {
                         &meta,
                         withdraw_authority_info.key,
                         &stake_pool.lockup,
-                    ) =>
+                    ) && stake.delegation.deactivation_epoch == Epoch::MAX =>
                 {
-                    if stake.delegation.deactivation_epoch == Epoch::MAX {
-                        Self::stake_deactivate(
-                            transient_stake_account_info.clone(),
-                            clock_info.clone(),
-                            withdraw_authority_info.clone(),
-                            stake_pool_info.key,
-                            AUTHORITY_WITHDRAW,
-                            stake_pool.stake_withdraw_bump_seed,
-                        )?;
-                    }
+                    Self::stake_deactivate(
+                        transient_stake_account_info.clone(),
+                        clock_info.clone(),
+                        withdraw_authority_info.clone(),
+                        stake_pool_info.key,
+                        AUTHORITY_WITHDRAW,
+                        stake_pool.stake_withdraw_bump_seed,
+                    )?;
                 }
                 _ => (),
             }
