@@ -16,8 +16,8 @@ use {
     solana_sdk::transaction::Transaction,
     solana_stake_interface as stake,
     spl_stake_pool::{
-        find_withdraw_authority_program_address,
-        state::{StakePool, ValidatorList},
+        find_ephemeral_stake_program_address, find_withdraw_authority_program_address,
+        state::{StakePool, ValidatorList, ValidatorStakeInfo},
     },
     std::collections::HashSet,
 };
@@ -190,4 +190,47 @@ pub(crate) fn add_compute_unit_limit_from_simulation(
         .expect("Compute budget instruction was added earlier")
         .data = ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit).data;
     Ok(())
+}
+
+/// Helper function to find an unused ephemeral stake account by incrementing seeds
+/// starting from 0 until an uninitialized account is found
+pub(crate) fn find_unused_ephemeral_stake_seed(
+    rpc_client: &RpcClient,
+    stake_pool_program_id: &Pubkey,
+    stake_pool_address: &Pubkey,
+    max_attempts: u64,
+) -> Result<u64, Error> {
+    for seed in 0..max_attempts {
+        let (ephemeral_stake_address, _) =
+            find_ephemeral_stake_program_address(stake_pool_program_id, stake_pool_address, seed);
+
+        // Check if the account exists and is initialized
+        match rpc_client.get_account(&ephemeral_stake_address) {
+            Ok(account) => {
+                // Account exists - check if it's initialized (has non-zero data)
+                if account.data.iter().all(|&x| x == 0) {
+                    // Account exists but is uninitialized, can use this seed
+                    return Ok(seed);
+                }
+                // Account is initialized, try next seed
+                continue;
+            }
+            Err(_) => {
+                // Account doesn't exist, can use this seed
+                return Ok(seed);
+            }
+        }
+    }
+
+    Err(format!(
+        "Could not find an unused ephemeral stake account after {} attempts. \
+         All ephemeral seeds are in use. Wait for the next epoch for accounts to be cleaned up.",
+        max_attempts
+    )
+    .into())
+}
+
+/// Check if a validator's transient stake account is currently in use
+pub(crate) fn is_transient_stake_in_use(validator_stake_info: &ValidatorStakeInfo) -> bool {
+    u64::from(validator_stake_info.transient_stake_lamports) > 0
 }
