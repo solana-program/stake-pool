@@ -103,7 +103,7 @@ pub enum StakePoolError {
     /// account
     #[error("IncorrectWithdrawVoteAddress")]
     IncorrectWithdrawVoteAddress,
-    /// The mint has an invalid freeze authority
+    /// DEPRECATED AND UNUSED: the program now allows freeze authorities
     #[error("InvalidMintFreezeAuthority")]
     InvalidMintFreezeAuthority,
     /// Proposed fee increase exceeds stipulated ratio
