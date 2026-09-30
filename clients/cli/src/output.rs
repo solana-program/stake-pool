@@ -248,6 +248,7 @@ pub(crate) struct CliStakePoolDetails {
     pub current_number_of_validators: u32,
     pub max_number_of_validators: u32,
     pub update_required: bool,
+    pub freezable: bool,
 }
 
 impl Display for CliStakePoolDetails {
@@ -277,7 +278,12 @@ impl Display for CliStakePoolDetails {
                 ""
             },
         )?;
-        writeln!(f, "Total Pool Tokens: {}", &self.total_pool_tokens,)?;
+        writeln!(
+            f,
+            "Total Pool Tokens: {}{}",
+            &self.total_pool_tokens,
+            if self.freezable { " [FREEZABLE]" } else { "" }
+        )?;
         writeln!(
             f,
             "Current Number of Validators: {}",

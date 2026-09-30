@@ -182,6 +182,26 @@ fn check_stake_pool_fees(
     Ok(())
 }
 
+fn check_freezable_mint(
+    rpc_client: &RpcClient,
+    stake_pool_address: &Pubkey,
+    mint_address: &Pubkey,
+    allow_freezable_token: bool,
+) -> Result<(), Error> {
+    let pool_mint = get_token_mint(rpc_client, mint_address)?;
+    if pool_mint.freeze_authority.is_some() && !allow_freezable_token {
+        Err(format!(
+            "WARNING: stake pool {stake_pool_address} has a mint with a
+            configured freeze authority. This authority may freeze pool tokens
+            and prevent future withdrawal. To accept this risk, re-run the
+            command with the `--allow-freezable-token` flag.",
+        )
+        .into())
+    } else {
+        Ok(())
+    }
+}
+
 fn get_signer(
     matches: &ArgMatches<'_>,
     keypair_name: &str,
@@ -1032,12 +1052,19 @@ fn command_deposit_stake(
     withdraw_authority: Box<dyn Signer>,
     pool_token_receiver_account: &Option<Pubkey>,
     referrer_token_account: &Option<Pubkey>,
+    allow_freezable_token: bool,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    check_freezable_mint(
+        &config.rpc_client,
+        stake_pool_address,
+        &stake_pool.pool_mint,
+        allow_freezable_token,
+    )?;
     let stake_state = get_stake_state(&config.rpc_client, stake)?;
 
     if config.verbose {
@@ -1160,6 +1187,7 @@ fn command_deposit_all_stake(
     withdraw_authority: Box<dyn Signer>,
     pool_token_receiver_account: &Option<Pubkey>,
     referrer_token_account: &Option<Pubkey>,
+    allow_freezable_token: bool,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
@@ -1167,6 +1195,13 @@ fn command_deposit_all_stake(
 
     let stake_addresses = get_all_stake(&config.rpc_client, stake_authority)?;
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+
+    check_freezable_mint(
+        &config.rpc_client,
+        stake_pool_address,
+        &stake_pool.pool_mint,
+        allow_freezable_token,
+    )?;
 
     // Create token account if not specified
     let mut total_rent_free_balances = 0;
@@ -1293,6 +1328,7 @@ fn command_deposit_sol(
     pool_token_receiver_account: &Option<Pubkey>,
     referrer_token_account: &Option<Pubkey>,
     lamports: u64,
+    allow_freezable_token: bool,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false, false)?;
@@ -1313,6 +1349,12 @@ fn command_deposit_sol(
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    check_freezable_mint(
+        &config.rpc_client,
+        stake_pool_address,
+        &stake_pool.pool_mint,
+        allow_freezable_token,
+    )?;
 
     let mut instructions: Vec<Instruction> = vec![];
 
@@ -1495,6 +1537,7 @@ fn command_list(
         current_number_of_validators: current_number_of_validators as u32,
         max_number_of_validators,
         update_required,
+        freezable: pool_mint.freeze_authority.is_some(),
     };
     cli_stake_pool.details = Some(cli_stake_pool_details);
     println!("{}", config.output_format.formatted_string(&cli_stake_pool));
@@ -2774,6 +2817,12 @@ fn main() {
                     .help("Pool token account to receive the referral fees for deposits. \
                           Defaults to the token receiver."),
             )
+            .arg(
+                Arg::with_name("allow_freezable_token")
+                    .long("allow-freezable-token")
+                    .takes_value(false)
+                    .help("Allow deposit into a pool with a configured freeze authority.")
+            )
         )
         .subcommand(SubCommand::with_name("deposit-all-stake")
             .about("Deposit all active stake accounts into the stake pool in exchange for pool tokens")
@@ -2821,6 +2870,12 @@ fn main() {
                     .help("Pool token account to receive the referral fees for deposits. \
                           Defaults to the token receiver."),
             )
+            .arg(
+                Arg::with_name("allow_freezable_token")
+                    .long("allow-freezable-token")
+                    .takes_value(false)
+                    .help("Allow deposit into a pool with a configured freeze authority.")
+            )
         )
         .subcommand(SubCommand::with_name("deposit-sol")
             .about("Deposit SOL into the stake pool in exchange for pool tokens")
@@ -2866,6 +2921,12 @@ fn main() {
                     .takes_value(true)
                     .help("Account to receive the referral fees for deposits. \
                           Defaults to the token receiver."),
+            )
+            .arg(
+                Arg::with_name("allow_freezable_token")
+                    .long("allow-freezable-token")
+                    .takes_value(false)
+                    .help("Allow deposit into a pool with a configured freeze authority.")
             )
         )
         .subcommand(SubCommand::with_name("list")
@@ -3409,6 +3470,7 @@ fn main() {
                 withdraw_authority,
                 &token_receiver,
                 &referrer,
+                arg_matches.is_present("allow_freezable_token"),
             )
         }
         ("deposit-sol", Some(arg_matches)) => {
@@ -3425,6 +3487,7 @@ fn main() {
                 &token_receiver,
                 &referrer,
                 lamports,
+                arg_matches.is_present("allow_freezable_token"),
             )
         }
         ("list", Some(arg_matches)) => {
@@ -3589,6 +3652,7 @@ fn main() {
                 withdraw_authority,
                 &token_receiver,
                 &referrer,
+                arg_matches.is_present("allow_freezable_token"),
             )
         }
         _ => unreachable!(),
