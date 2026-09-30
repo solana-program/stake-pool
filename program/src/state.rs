@@ -503,7 +503,7 @@ pub fn is_extension_supported_for_mint(extension_type: &ExtensionType) -> bool {
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
         ExtensionType::ConfidentialTransferFeeConfig,
-        ExtensionType::DefaultAccountState, // ok, but a freeze authority is not
+        ExtensionType::DefaultAccountState,
         ExtensionType::InterestBearingConfig,
         ExtensionType::MetadataPointer,
         ExtensionType::TokenMetadata,
