@@ -273,6 +273,11 @@ pub enum StakePoolInstruction {
     ///   representing ownership into the pool. Inputs are converted to the
     ///   current ratio.
     ///
+    ///   This instruction MUST be included within the same Transaction as the
+    ///   stake program's `Authorize` instruction that assigns ownership of the
+    ///   stake account to the stake pool. Otherwise another party can deposit
+    ///   the stake account and receive pool tokens destined for someone else.
+    ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
     ///   2. `[s]/[]` Stake pool deposit authority
