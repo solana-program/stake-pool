@@ -1,7 +1,7 @@
 flake8>=7.4.1
 iniconfig>=2.3.0
 mccabe>=0.7.0
-mypy>=2.3.1
+mypy>=2.4.0
 mypy-extensions>=1.1.0
 packaging>=26.3
 pluggy>=1.6.0
