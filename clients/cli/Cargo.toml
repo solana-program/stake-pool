@@ -1,6 +1,6 @@
 [package]
 name = "spl-stake-pool-cli"
-version = "2.0.1"
+version = "3.0.0"
 description = "SPL-Stake-Pool Command-line Utility"
 homepage = "https://www.solana-program.com/docs/stake-pool"
 authors = ["Anza Maintainers <maintainers@anza.xyz>"]
