@@ -3,7 +3,7 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 export function solToLamports(amount: number): number {
   if (isNaN(amount)) return Number(0);
-  return Number(amount * LAMPORTS_PER_SOL);
+  return Math.round(amount * LAMPORTS_PER_SOL);
 }
 
 export function lamportsToSol(lamports: number | BN | bigint): number {
