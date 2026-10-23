@@ -713,6 +713,7 @@ export async function addValidatorToPool(
       validatorList: validatorList,
       validatorStake: validatorStake,
       validatorVote: validatorVote,
+      seed,
     }),
   ];
 

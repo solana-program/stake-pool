@@ -251,6 +251,38 @@ describe('StakePoolProgram', () => {
         validatorListMock.validators[0].voteAccountAddress,
       );
     });
+
+    it('should pass the validator seed to the instruction', async () => {
+      connection.getAccountInfo = jest.fn(async (pubKey) => {
+        if (pubKey === stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        return <AccountInfo<any>>{
+          executable: true,
+          owner: new PublicKey(0),
+          lamports: 0,
+          data,
+        };
+      });
+      const voteAccount = validatorListMock.validators[0].voteAccountAddress;
+      const seed = 5;
+      const res = await addValidatorToPool(connection, stakePoolAddress, voteAccount, seed);
+
+      const validatorStake = await findStakeProgramAddress(
+        STAKE_POOL_PROGRAM_ID,
+        voteAccount,
+        stakePoolAddress,
+        seed,
+      );
+      expect(res.instructions[0].keys[5].pubkey).toEqual(validatorStake);
+
+      // The program derives the validator stake address from the seed in the data
+      const decodedData = decodeData(
+        STAKE_POOL_INSTRUCTION_LAYOUTS.AddValidatorToPool,
+        res.instructions[0].data,
+      );
+      expect(decodedData.seed).toEqual(seed);
+    });
   });
 
   describe('removeValidatorFromPool', () => {
