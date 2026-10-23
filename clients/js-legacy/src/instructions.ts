@@ -1011,14 +1011,17 @@ export class StakePoolInstruction {
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ];
 
-    const type = tokenMetadataLayout(17, name.length, symbol.length, uri.length);
+    const nameBytes = Buffer.from(name);
+    const symbolBytes = Buffer.from(symbol);
+    const uriBytes = Buffer.from(uri);
+    const type = tokenMetadataLayout(17, nameBytes.length, symbolBytes.length, uriBytes.length);
     const data = encodeData(type, {
-      nameLen: name.length,
-      name: Buffer.from(name),
-      symbolLen: symbol.length,
-      symbol: Buffer.from(symbol),
-      uriLen: uri.length,
-      uri: Buffer.from(uri),
+      nameLen: nameBytes.length,
+      name: nameBytes,
+      symbolLen: symbolBytes.length,
+      symbol: symbolBytes,
+      uriLen: uriBytes.length,
+      uri: uriBytes,
     });
 
     return new TransactionInstruction({
@@ -1044,14 +1047,17 @@ export class StakePoolInstruction {
       { pubkey: METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
     ];
 
-    const type = tokenMetadataLayout(18, name.length, symbol.length, uri.length);
+    const nameBytes = Buffer.from(name);
+    const symbolBytes = Buffer.from(symbol);
+    const uriBytes = Buffer.from(uri);
+    const type = tokenMetadataLayout(18, nameBytes.length, symbolBytes.length, uriBytes.length);
     const data = encodeData(type, {
-      nameLen: name.length,
-      name: Buffer.from(name),
-      symbolLen: symbol.length,
-      symbol: Buffer.from(symbol),
-      uriLen: uri.length,
-      uri: Buffer.from(uri),
+      nameLen: nameBytes.length,
+      name: nameBytes,
+      symbolLen: symbolBytes.length,
+      symbol: symbolBytes,
+      uriLen: uriBytes.length,
+      uri: uriBytes,
     });
 
     return new TransactionInstruction({
