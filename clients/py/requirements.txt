@@ -22,4 +22,4 @@ truststore>=0.10.5
 typing-inspection>=0.4.4
 typing_extensions>=4.16.0
 tzdata>=2026.5
-websockets>=17.2
+websockets>=17.3
