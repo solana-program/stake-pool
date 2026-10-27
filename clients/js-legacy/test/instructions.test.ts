@@ -611,5 +611,19 @@ describe('StakePoolProgram', () => {
       expect(Buffer.from(data.symbol).toString()).toBe(symbol);
       expect(Buffer.from(data.uri).toString()).toBe(uri);
     });
+
+    it('should encode non-ascii metadata by its utf-8 byte length', async () => {
+      const name = 'Staked SOL ☀';
+      const symbol = 'sSOL';
+      const uri = 'https://example.com';
+      const res = await updatePoolTokenMetadata(connection, stakePoolAddress, name, symbol, uri);
+      const nameLength = Buffer.byteLength(name);
+      const type = tokenMetadataLayout(18, nameLength, symbol.length, uri.length);
+      const data = decodeData(type, res.instructions[0].data);
+      expect(data.nameLen).toBe(nameLength);
+      expect(Buffer.from(data.name).toString()).toBe(name);
+      expect(Buffer.from(data.symbol).toString()).toBe(symbol);
+      expect(Buffer.from(data.uri).toString()).toBe(uri);
+    });
   });
 });
