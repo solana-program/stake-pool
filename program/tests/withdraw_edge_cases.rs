@@ -17,6 +17,111 @@ use {
     test_case::test_case,
 };
 
+#[test_case(spl_token_interface::id(); "token")]
+#[test_case(spl_token_2022_interface::id(); "token-2022")]
+#[tokio::test]
+async fn success_withdraw_at_minimum_threshold(token_program_id: Pubkey) {
+    let stake_pool_accounts = StakePoolAccounts {
+        token_program_id,
+        ..StakePoolAccounts::new_without_fees()
+    };
+    let (
+        mut context,
+        validator_stake,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        _,
+    ) = setup_for_withdraw_with_accounts(&stake_pool_accounts, 0).await;
+
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
+    let stake_minimum_delegation = stake_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+    )
+    .await;
+    let required_lamports =
+        spl_stake_pool::minimum_stake_lamports(stake_rent, stake_minimum_delegation);
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<state::StakePool>(&stake_pool.data).unwrap();
+    assert_eq!(stake_pool.total_lamports, stake_pool.pool_token_supply);
+    let tolerance = stake_pool.get_lamports_per_pool_token().unwrap();
+    let threshold = required_lamports + stake_minimum_delegation + tolerance;
+    let validator_account =
+        get_account(&mut context.banks_client, &validator_stake.stake_account).await;
+
+    // Leave exactly the threshold used to select active stake for withdrawals.
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.stake_account,
+            &new_authority,
+            validator_account.lamports - threshold,
+        )
+        .await;
+    assert!(error.is_none(), "{error:?}");
+    assert_eq!(
+        get_account(&mut context.banks_client, &validator_stake.stake_account)
+            .await
+            .lamports,
+        threshold
+    );
+
+    let user_stake_recipient = Keypair::new();
+    create_blank_stake_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &user_stake_recipient,
+    )
+    .await;
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.stake_account,
+            &new_authority,
+            stake_minimum_delegation + tolerance,
+        )
+        .await;
+    assert!(error.is_none(), "{error:?}");
+    assert_eq!(
+        get_account(&mut context.banks_client, &validator_stake.stake_account)
+            .await
+            .lamports,
+        required_lamports
+    );
+    let validator_list = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(&validator_list.data).unwrap();
+    let validator = validator_list.find(&validator_stake.vote.pubkey()).unwrap();
+    assert_eq!(
+        u64::from(validator.active_stake_lamports),
+        required_lamports
+    );
+    assert_eq!(validator.status, state::StakeStatus::Active.into());
+}
+
 #[tokio::test]
 async fn fail_remove_validator_blocked_by_transient_stake() {
     let (
