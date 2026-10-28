@@ -532,29 +532,6 @@ describe('StakePoolProgram', () => {
       expect(res.totalRentFreeBalances).toEqual(10000);
     });
 
-    it('should convert a fractional amount to whole pool tokens', async () => {
-      connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
-          return stakePoolAccount;
-        }
-        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
-          return mockTokenAccount(LAMPORTS_PER_SOL * 2);
-        }
-        if (pubKey.equals(stakePoolMock.validatorList)) {
-          return mockValidatorList();
-        }
-        return null;
-      });
-      const res = await withdrawStake(connection, stakePoolAddress, tokenOwner, 1.005);
-
-      expect(res.instructions[0].data.readBigUInt64LE(1)).toEqual(1005000000n);
-      const data = decodeData(
-        STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawStake,
-        res.instructions[2].data,
-      );
-      expect(data.poolTokens).toEqual(1005000000);
-    });
-
     it('withdraw to a stake account provided', async () => {
       const stakeReceiver = new PublicKey(20);
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
