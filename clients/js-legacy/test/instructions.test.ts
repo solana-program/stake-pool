@@ -572,6 +572,54 @@ describe('StakePoolProgram', () => {
       expect(res.stakeReceiver).toEqual(stakeReceiver);
       expect(res.totalRentFreeBalances).toEqual(10000);
     });
+
+    it('withdraw to a stake account provided with its vote account', async () => {
+      const stakeReceiver = new PublicKey(20);
+      connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey == stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
+          return mockTokenAccount(LAMPORTS_PER_SOL * 2);
+        }
+        if (pubKey.equals(stakePoolMock.validatorList)) {
+          return mockValidatorList();
+        }
+        if (pubKey.equals(CONSTANTS.validatorStakeAccountAddress))
+          return mockValidatorsStakeAccount();
+        return null;
+      });
+      connection.getParsedAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey.equals(stakeReceiver)) {
+          return mockRpc(stakeAccountData);
+        }
+        return null;
+      });
+      const voter = stakeAccountData.parsed.info.stake.delegation.voter.toBase58();
+
+      const res = await withdrawStake(
+        connection,
+        stakePoolAddress,
+        tokenOwner,
+        1,
+        undefined,
+        new PublicKey(voter),
+        stakeReceiver,
+      );
+      expect(res.stakeReceiver).toEqual(stakeReceiver);
+
+      await expect(
+        withdrawStake(
+          connection,
+          stakePoolAddress,
+          tokenOwner,
+          1,
+          undefined,
+          new PublicKey(21),
+          stakeReceiver,
+        ),
+      ).rejects.toThrow('does not match delegation on stake receiver account');
+    });
   });
   describe('getStakeAccount', () => {
     it('returns an uninitialized parsed stake account', async () => {
