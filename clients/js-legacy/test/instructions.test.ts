@@ -13,6 +13,7 @@ import {
   Keypair,
   SystemProgram,
   StakeProgram,
+  StakeInstruction,
   AccountInfo,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
@@ -567,10 +568,15 @@ describe('StakePoolProgram', () => {
 
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(4);
       expect((connection.getParsedAccountInfo as jest.Mock).mock.calls.length).toBe(1);
-      expect(res.instructions).toHaveLength(3);
+      expect(res.instructions).toHaveLength(4);
       expect(res.signers).toHaveLength(2);
       expect(res.stakeReceiver).toEqual(stakeReceiver);
       expect(res.totalRentFreeBalances).toEqual(10000);
+
+      const merge = StakeInstruction.decodeMerge(res.instructions[3]);
+      expect(merge.stakePubkey).toEqual(stakeReceiver);
+      expect(merge.sourceStakePubKey).toEqual(res.signers[1].publicKey);
+      expect(merge.authorizedPubkey).toEqual(tokenOwner);
     });
   });
   describe('getStakeAccount', () => {
