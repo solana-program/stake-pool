@@ -1,4 +1,4 @@
-flake8>=7.4.1
+flake8>=7.5.0
 iniconfig>=2.3.1
 mccabe>=0.7.0
 mypy>=2.4.0
