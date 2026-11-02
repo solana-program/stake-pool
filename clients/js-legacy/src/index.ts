@@ -413,7 +413,7 @@ export async function withdrawStake(
     const isValidVoter = validatorList.validators.find((val) =>
       val.voteAccountAddress.equals(voteAccount),
     );
-    if (voteAccountAddress && voteAccountAddress !== voteAccount) {
+    if (voteAccountAddress && !voteAccountAddress.equals(voteAccount)) {
       throw new Error(`Provided withdrawal vote account ${voteAccountAddress} does not match delegation on stake receiver account ${voteAccount},
       remove this flag or provide a different stake account delegated to ${voteAccountAddress}`);
     }
