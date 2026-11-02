@@ -568,15 +568,17 @@ export async function withdrawStake(
     i++;
   }
   if (stakeReceiver && stakeReceiverAccount && stakeReceiverAccount.type === 'delegated') {
-    signers.forEach((newStakeKeypair) => {
-      instructions.concat(
-        StakeProgram.merge({
-          stakePubkey: stakeReceiver,
-          sourceStakePubKey: newStakeKeypair.publicKey,
-          authorizedPubkey: tokenOwner,
-        }).instructions,
-      );
-    });
+    signers
+      .filter((signer) => signer !== userTransferAuthority)
+      .forEach((newStakeKeypair) => {
+        instructions.push(
+          ...StakeProgram.merge({
+            stakePubkey: stakeReceiver,
+            sourceStakePubKey: newStakeKeypair.publicKey,
+            authorizedPubkey: tokenOwner,
+          }).instructions,
+        );
+      });
   }
 
   return {
