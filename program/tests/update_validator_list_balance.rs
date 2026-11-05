@@ -4,7 +4,8 @@ mod helpers;
 use {
     helpers::*,
     solana_program::{
-        borsh1::try_from_slice_unchecked, instruction::InstructionError, program_pack::Pack,
+        borsh1::try_from_slice_unchecked, clock::Clock, instruction::InstructionError,
+        program_pack::Pack,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -293,7 +294,7 @@ async fn merge_into_reserve() {
     }
 
     // Update, should not change, no merges yet
-    stake_pool_accounts
+    let error = stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
@@ -301,6 +302,7 @@ async fn merge_into_reserve() {
             false,
         )
         .await;
+    assert!(error.is_none(), "{:?}", error);
 
     let expected_lamports = get_validator_list_sum(
         &mut context.banks_client,
@@ -1322,4 +1324,85 @@ async fn cleanup_does_not_remove_validators_with_remaining_lamports() {
         StakeStatus::ReadyForRemoval.into(),
         "Validator status should remain ReadyForRemoval"
     );
+}
+
+#[tokio::test]
+async fn do_not_merge_into_a_deactivated_validator_stake_account() {
+    // A validator stake account can be deactivated from outside the pool, for instance by the
+    // stake program's permissionless `DeactivateDelinquent`. Once its cooldown is over it is
+    // `Inactive`, and merging the `FullyActive` transient into it fails with `MergeMismatch`,
+    // which would abort the whole instruction and leave the record — and so the pool — stale.
+    // The documented table in `process_update_validator_list_balance` already says a deactivating
+    // stake is only accounted for, never merged. Assert the pool keeps updating.
+    let (mut context, last_blockhash, stake_pool_accounts, stake_accounts, _, lamports, _, mut slot) =
+        setup(1).await;
+    let validator = &stake_accounts[0];
+
+    // the staker rebalances upward, creating a fully-active transient
+    let error = stake_pool_accounts
+        .increase_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            &validator.transient_stake_account,
+            &validator.stake_account,
+            &validator.vote.pubkey(),
+            lamports,
+            validator.transient_stake_seed,
+        )
+        .await;
+    assert!(error.is_none(), "{:?}", error);
+
+    // deactivate the validator stake account out from under the pool
+    let mut validator_stake = context
+        .banks_client
+        .get_account(validator.stake_account)
+        .await
+        .unwrap()
+        .unwrap();
+    if let StakeStateV2::Stake(meta, mut stake, flags) =
+        try_from_slice_unchecked::<StakeStateV2>(&validator_stake.data).unwrap()
+    {
+        let clock = context.banks_client.get_sysvar::<Clock>().await.unwrap();
+        stake.delegation.deactivation_epoch = clock.epoch;
+        validator_stake.data =
+            bincode::serialize(&StakeStateV2::Stake(meta, stake, flags)).unwrap();
+        context.set_account(&validator.stake_account, &validator_stake.into());
+    } else {
+        panic!("the validator stake account should be delegated at this point");
+    }
+
+    // next epoch: the destination is inactive, the transient is fully active
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
+
+    let error = stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &last_blockhash,
+            false,
+        )
+        .await;
+    assert!(
+        error.is_none(),
+        "the update must not attempt an impossible merge: {:?}",
+        error
+    );
+
+    // and the pool is actually fresh, so deposits and withdrawals still work
+    let clock = context.banks_client.get_sysvar::<Clock>().await.unwrap();
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data).unwrap();
+    assert_eq!(stake_pool.last_update_epoch, clock.epoch);
 }
