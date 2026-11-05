@@ -8,4 +8,4 @@ pluggy>=1.7.0
 pycodestyle>=2.15.0
 pyflakes>=4.1.0
 pytest>=9.2.0
-pytest-asyncio>=1.4.1
+pytest-asyncio>=1.4.1.post1
