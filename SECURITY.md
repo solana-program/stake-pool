@@ -8,11 +8,11 @@
 
 **DO NOT CREATE A GITHUB ISSUE** to report a security problem.
 
-Instead please use this [Report a Vulnerability](https://github.com/solana-program/stake-pool/security/advisories/new) link.
-Provide a helpful title that includes the affected program name, a detailed
-description of the vulnerability, and an exploit proof-of-concept. Speculative
-submissions without proof-of-concept will be closed with no further
-consideration.
+Instead, submit findings through the submission portal at https://bounty.anza.xyz/.
+Sign in with your GitHub account, select the `spl-stake-pool` program, and provide a
+helpful summary that includes the affected program name, a detailed description of
+the vulnerability, and an exploit proof-of-concept. Speculative submissions without
+proof-of-concept will be closed with no further consideration.
 
 Proof-of-concept requirements:
 
@@ -33,7 +33,7 @@ Expect a response as fast as possible in the advisory, typically within 72 hours
 --
 
 If you do not receive a response in the advisory, send an email to
-<security@anza.xyz> with the full URL of the advisory you have created. DO NOT
+<security@anza.xyz> with the full URL of the advisory the portal created. DO NOT
 include attachments or provide detail sufficient for exploitation regarding the
 security issue in this email. **Only provide such details in the advisory**.
 
