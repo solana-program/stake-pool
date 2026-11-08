@@ -1,6 +1,7 @@
 import pytest
 from solders.keypair import Keypair
 from solana.rpc.commitment import Confirmed
+from solana.rpc.core import RPCException
 from spl.token.constants import TOKEN_PROGRAM_ID
 
 from stake_pool.constants import \
@@ -69,3 +70,15 @@ async def test_create_stake_pool(async_client, payer):
     assert pool_data.next_sol_withdrawal_fee is None
     assert pool_data.last_epoch_pool_token_supply == 0
     assert pool_data.last_epoch_total_lamports == 0
+
+
+@pytest.mark.asyncio
+async def test_create_stake_pool_is_atomic(async_client, payer):
+    stake_pool = Keypair()
+    bogus = Keypair().pubkey()  # makes initialize fail
+    with pytest.raises(RPCException):
+        await create(async_client, payer, stake_pool, Keypair(), bogus, bogus, bogus,
+                     Fee(numerator=1, denominator=1000), 20)
+    # the failed initialize must take the account creation down with it
+    resp = await async_client.get_account_info(stake_pool.pubkey(), commitment=Confirmed)
+    assert resp.value is None

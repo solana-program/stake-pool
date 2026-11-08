@@ -44,7 +44,10 @@ async def create(client: AsyncClient, manager: Keypair,
     validator_list_size = ValidatorList.calculate_validator_list_size(max_validators)
     resp = await client.get_minimum_balance_for_rent_exemption(validator_list_size)
     validator_list_balance = resp.value
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(
+        STAKE_POOL_PROGRAM_ID, stake_pool.pubkey())
     recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    # One transaction, so no one can initialize the new accounts in between
     txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
         [
             sys.create_account(
@@ -65,18 +68,6 @@ async def create(client: AsyncClient, manager: Keypair,
                     owner=STAKE_POOL_PROGRAM_ID,
                 )
             ),
-        ],
-        payer=manager.pubkey(),
-        recent_blockhash=recent_blockhash,
-        signing_keypairs=[manager, stake_pool, validator_list],
-    ))
-    await client.send_transaction(txn, opts=OPTS)
-
-    (withdraw_authority, seed) = find_withdraw_authority_program_address(
-        STAKE_POOL_PROGRAM_ID, stake_pool.pubkey())
-    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
-    txn = VersionedTransaction.from_legacy(Transaction.new_signed_with_payer(
-        [
             sp.initialize(
                 sp.InitializeParams(
                     program_id=STAKE_POOL_PROGRAM_ID,
@@ -99,7 +90,7 @@ async def create(client: AsyncClient, manager: Keypair,
         ],
         payer=manager.pubkey(),
         recent_blockhash=recent_blockhash,
-        signing_keypairs=[manager],
+        signing_keypairs=[manager, stake_pool, validator_list],
     ))
     await client.send_transaction(txn, opts=OPTS)
 
