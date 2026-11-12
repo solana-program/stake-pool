@@ -2014,8 +2014,19 @@ impl Processor {
                                             _,
                                         )) = validator_stake_state
                                         {
+                                            // The documented table above says a deactivating
+                                            // transient is only accounted for, never merged, and
+                                            // the destination must be a live delegation too: a
+                                            // deactivated validator stake account is `Inactive`
+                                            // to the stake program, and merging a `FullyActive`
+                                            // source into it fails with `MergeMismatch`, which
+                                            // would abort this whole instruction.
                                             if validator_stake.delegation.activation_epoch
                                                 < clock.epoch
+                                                && validator_stake.delegation.deactivation_epoch
+                                                    == Epoch::MAX
+                                                && stake.delegation.deactivation_epoch
+                                                    == Epoch::MAX
                                             {
                                                 Self::stake_merge(
                                                     stake_pool_info.key,
