@@ -3,15 +3,18 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh1::try_from_slice_unchecked, pubkey::Pubkey},
+    solana_program::{
+        borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
+    },
     solana_program_test::*,
     solana_sdk::{
         native_token::LAMPORTS_PER_SOL,
         signature::{Keypair, Signer},
-        transaction::Transaction,
+        transaction::{Transaction, TransactionError},
     },
     solana_stake_interface as stake,
     spl_stake_pool::{
+        error::StakePoolError,
         find_stake_program_address, find_transient_stake_program_address, id,
         instruction::{self, PreferredValidatorType},
         state::{StakePool, StakeStatus, ValidatorList},
@@ -530,6 +533,38 @@ async fn add_validator_to_pool(max_validators: u32) {
         increase_amount + STAKE_ACCOUNT_RENT_EXEMPTION
     );
     assert_eq!(last_element.vote_account_address, test_vote_address);
+}
+
+#[tokio::test]
+async fn fail_add_validator_past_max() {
+    let (mut context, stake_pool_accounts, _, test_vote_address, _, _, _) =
+        setup(MAX_POOL_SIZE + 1, MAX_POOL_SIZE, STAKE_AMOUNT).await;
+
+    let (stake_address, _) = find_stake_program_address(
+        &id(),
+        &test_vote_address,
+        &stake_pool_accounts.stake_pool.pubkey(),
+        None,
+    );
+    let error = stake_pool_accounts
+        .add_validator_to_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &stake_address,
+            &test_vote_address,
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            1,
+            InstructionError::Custom(StakePoolError::TooManyValidatorsInPool as u32),
+        )
+    );
 }
 
 //#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
