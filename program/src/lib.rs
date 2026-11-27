@@ -63,7 +63,7 @@ pub const MAX_TRANSIENT_STAKE_ACCOUNTS: usize = 10;
 
 /// The maximum number of validators that can be supported in a pool in order
 /// for stake withdrawals to still work
-pub const MAX_VALIDATORS_IN_POOL: u32 = 20_000;
+pub const MAX_VALIDATORS_IN_POOL: u32 = 3_000;
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
