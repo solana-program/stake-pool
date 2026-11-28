@@ -737,18 +737,16 @@ impl ValidatorStakeInfo {
         }
     }
 
-    /// Performs a comparison, used to check if this validator stake
-    /// info has more active lamports than some limit
-    pub fn active_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+    /// Checks whether this validator has at least the given active lamports.
+    pub fn active_lamports_greater_than_or_equal(data: &[u8], lamports: &u64) -> bool {
         // without this unwrap, compute usage goes up significantly
-        u64::try_from_slice(&data[0..8]).unwrap() > *lamports
+        u64::try_from_slice(&data[0..8]).unwrap() >= *lamports
     }
 
-    /// Performs a comparison, used to check if this validator stake
-    /// info has more transient lamports than some limit
-    pub fn transient_lamports_greater_than(data: &[u8], lamports: &u64) -> bool {
+    /// Checks whether this validator has at least the given transient lamports.
+    pub fn transient_lamports_greater_than_or_equal(data: &[u8], lamports: &u64) -> bool {
         // without this unwrap, compute usage goes up significantly
-        u64::try_from_slice(&data[8..16]).unwrap() > *lamports
+        u64::try_from_slice(&data[8..16]).unwrap() >= *lamports
     }
 
     /// Check that the validator stake info is totally removed
@@ -1081,6 +1079,7 @@ mod test {
         solana_borsh::v1::{get_packed_len, try_from_slice_unchecked},
         solana_clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
         solana_native_token::LAMPORTS_PER_SOL,
+        test_case::test_case,
     };
 
     fn uninitialized_validator_list() -> ValidatorList {
@@ -1166,6 +1165,37 @@ mod test {
         borsh::to_writer(bytes, &stake_list).unwrap();
         let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
+    }
+
+    #[test_case(99, 101, 100, false, true; "below_and_above")]
+    #[test_case(100, 100, 100, true, true; "equal")]
+    #[test_case(101, 99, 100, true, false; "above_and_below")]
+    #[test_case(0, 0, 0, true, true; "zero")]
+    #[test_case(0, u64::MAX, u64::MAX, false, true; "maximum_transient")]
+    #[test_case(u64::MAX, 0, u64::MAX, true, false; "maximum_active")]
+    fn validator_stake_info_lamport_comparisons(
+        active_lamports: u64,
+        transient_lamports: u64,
+        threshold: u64,
+        expected_active: bool,
+        expected_transient: bool,
+    ) {
+        let validator = ValidatorStakeInfo {
+            active_stake_lamports: active_lamports.into(),
+            transient_stake_lamports: transient_lamports.into(),
+            ..ValidatorStakeInfo::default()
+        };
+        let data = borsh::to_vec(&validator).unwrap();
+        assert_eq!(
+            ValidatorStakeInfo::active_lamports_greater_than_or_equal(&data, &threshold),
+            expected_active,
+            "active {active_lamports}, threshold {threshold}"
+        );
+        assert_eq!(
+            ValidatorStakeInfo::transient_lamports_greater_than_or_equal(&data, &threshold),
+            expected_transient,
+            "transient {transient_lamports}, threshold {threshold}"
+        );
     }
 
     #[test]
